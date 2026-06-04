@@ -5,6 +5,7 @@
 
 import streamlit as st
 import pandas as pd
+import os
 
 from modulos.sunburst import crear_sunburst
 from modulos.radar import crear_radar
@@ -252,6 +253,130 @@ except Exception as e:
     st.error(
         f"Error en Sunburst: {e}"
     )
+
+    # ==========================================
+# REDES ATLAS.ti POR ESTUDIANTE Y FASE
+# ==========================================
+
+st.markdown("---")
+
+st.subheader("🧠 Redes ATLAS.ti por estudiante y fase")
+
+st.markdown("""
+Esta sección presenta las redes cualitativas generadas en ATLAS.ti
+para cada estudiante y para cada fase del análisis del modelo mental ambiental.
+Las redes permiten visualizar las relaciones entre categorías, subcategorías,
+códigos y vínculos semánticos.
+""")
+
+ruta_base_imagenes = "images"
+
+ruta_estudiante = os.path.join(
+    ruta_base_imagenes,
+    estudiante
+)
+
+if not os.path.exists(ruta_estudiante):
+
+    st.warning(
+        f"No se encontró la carpeta de imágenes para el estudiante {estudiante}. "
+        f"Verifique que exista la ruta: {ruta_estudiante}"
+    )
+
+else:
+
+    fases_imagenes = {
+        "FASE 1": [
+            "FASE1.jpg",
+            "Fase1.jpg",
+            "fase1.jpg",
+            "FASE_1.jpg",
+            "fase_1.jpg"
+        ],
+        "FASE 2": [
+            "FASE2.jpg",
+            "Fase2.jpg",
+            "fase2.jpg",
+            "FASE_2.jpg",
+            "fase_2.jpg"
+        ],
+        "FASE 3": [
+            "FASE3.jpg",
+            "Fase3.jpg",
+            "fase3.jpg",
+            "FASE_3.jpg",
+            "fase_3.jpg"
+        ]
+    }
+
+    tab_fase1, tab_fase2, tab_fase3 = st.tabs(
+        [
+            "FASE 1",
+            "FASE 2",
+            "FASE 3"
+        ]
+    )
+
+    tabs_redes = {
+        "FASE 1": tab_fase1,
+        "FASE 2": tab_fase2,
+        "FASE 3": tab_fase3
+    }
+
+    for nombre_fase, tab in tabs_redes.items():
+
+        with tab:
+
+            st.markdown(
+                f"### Red ATLAS.ti - {nombre_fase} - {estudiante}"
+            )
+
+            imagen_encontrada = None
+
+            for nombre_archivo in fases_imagenes[nombre_fase]:
+
+                ruta_imagen = os.path.join(
+                    ruta_estudiante,
+                    nombre_archivo
+                )
+
+                if os.path.exists(ruta_imagen):
+                    imagen_encontrada = ruta_imagen
+                    break
+
+            if imagen_encontrada:
+
+                st.image(
+                    imagen_encontrada,
+                    caption=f"Red ATLAS.ti - {nombre_fase} - {estudiante}",
+                    use_container_width=True
+                )
+
+                if nombre_fase == "FASE 1":
+                    st.info(
+                        "La FASE 1 permite observar la estructura inicial del modelo mental ambiental "
+                        "del estudiante, evidenciando las primeras relaciones entre conocimiento ambiental, "
+                        "valores, experiencias y percepción del problema ambiental."
+                    )
+
+                elif nombre_fase == "FASE 2":
+                    st.info(
+                        "La FASE 2 muestra la evolución de las relaciones conceptuales, con mayor articulación "
+                        "entre experiencia, conocimiento, comunicación, valores ambientales y comprensión del entorno."
+                    )
+
+                elif nombre_fase == "FASE 3":
+                    st.info(
+                        "La FASE 3 permite identificar una organización más compleja del modelo mental, "
+                        "incluyendo acciones ambientales, responsabilidad, hábitos sostenibles, contaminación, "
+                        "uso de recursos y estrategias de comunicación."
+                    )
+
+            else:
+
+                st.warning(
+                    f"No se encontró imagen para {nombre_fase} del estudiante {estudiante}."
+                )
 # ======================================
 # SANKEY EVOLUTIVO
 # ======================================
