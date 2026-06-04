@@ -385,39 +385,7 @@ columnas_mostrar = [
 st.dataframe(
     df[columnas_mostrar].head(15)
 )
-
-# ==========================================
-# SUNBURST
-# ==========================================
-
-st.markdown("---")
-
-st.subheader("🌳 Sunburst")
-
-try:
-
-    fig_sunburst = crear_sunburst(
-
-        df=df,
-        fases=fases,
-        cols_cita=cols_cita,
-        color_map=color_map,
-        titulo=f"Modelo Mental - {estudiante}"
-
-    )
-
-    st.plotly_chart(
-        fig_sunburst,
-        use_container_width=True
-    )
-
-except Exception as e:
-
-    st.error(
-        f"Error en Sunburst: {e}"
-    )
-
-    # ==========================================
+   # ==========================================
 # REDES ATLAS.ti POR ESTUDIANTE Y FASE
 # ==========================================
 
@@ -542,6 +510,38 @@ else:
                 )
 
                 
+# ==========================================
+# SUNBURST
+# ==========================================
+
+st.markdown("---")
+
+st.subheader("🌳 Sunburst")
+
+try:
+
+    fig_sunburst = crear_sunburst(
+
+        df=df,
+        fases=fases,
+        cols_cita=cols_cita,
+        color_map=color_map,
+        titulo=f"Modelo Mental - {estudiante}"
+
+    )
+
+    st.plotly_chart(
+        fig_sunburst,
+        use_container_width=True
+    )
+
+except Exception as e:
+
+    st.error(
+        f"Error en Sunburst: {e}"
+    )
+
+ 
 # ======================================
 # SANKEY EVOLUTIVO
 # ======================================
@@ -718,3 +718,109 @@ st.markdown("---")
 st.caption(
     "Proyecto de Investigación - Evolución de los Modelos Mentales de Conciencia Ambiental"
 )
+# ==========================================
+# MODELO FINAL DEL ESTUDIANTE
+# ==========================================
+
+st.markdown("---")
+
+st.subheader("🧩 Modelo final del estudiante")
+
+modelos_finales = {
+    "E01": {
+        "modelo": "Crítico-Sistémico",
+        "descripcion": "Conexión entre conocimiento científico, valores y acción.",
+        "interpretacion": (
+            "El estudiante articula comprensión conceptual del ambiente con una visión ética "
+            "y una orientación hacia la acción, mostrando una lectura sistémica de la relación "
+            "ser humano–naturaleza."
+        ),
+        "icono": "🧠🌿⚙️",
+        "color": "#1f77b4"
+    },
+    "E02": {
+        "modelo": "Biocéntrico",
+        "descripcion": "Consolidación de una postura de corresponsabilidad integral.",
+        "interpretacion": (
+            "El estudiante evidencia una visión centrada en el valor intrínseco de la naturaleza, "
+            "reforzando actitudes de cuidado, respeto y responsabilidad compartida frente al entorno."
+        ),
+        "icono": "🌳🤝🌎",
+        "color": "#2ca02c"
+    },
+    "E03": {
+        "modelo": "Crítico-Ético-Sistémico",
+        "descripcion": "Comunicación estratégica, clara y transformadora.",
+        "interpretacion": (
+            "El estudiante integra reflexión crítica, orientación ética y capacidad comunicativa "
+            "para transmitir mensajes ambientales comprensibles, cercanos y orientados al cambio."
+        ),
+        "icono": "📢🌿🔄",
+        "color": "#ff7f0e"
+    },
+    "E04": {
+        "modelo": "Crítico-Ético-Sistémico",
+        "descripcion": "Motivación proyectiva, sostenida y ética.",
+        "interpretacion": (
+            "El estudiante manifiesta una disposición ambiental proyectada hacia el futuro, "
+            "sosteniendo una postura ética y una intención de continuidad en prácticas responsables."
+        ),
+        "icono": "🧭🌱➡️",
+        "color": "#d62728"
+    },
+    "E05": {
+        "modelo": "Crítico-Propositivo Socioambiental",
+        "descripcion": "Integración entre comprensión ambiental, compromiso personal y transformación de hábitos.",
+        "interpretacion": (
+            "El estudiante muestra una visión que reconoce los problemas ambientales y los conecta "
+            "con la responsabilidad individual y colectiva, orientándose hacia acciones concretas "
+            "y cambios de comportamiento sostenibles."
+        ),
+        "icono": "💡🌿🤲",
+        "color": "#9467bd"
+    }
+}
+
+modelo_actual = modelos_finales.get(estudiante)
+
+if modelo_actual:
+
+    st.markdown(
+        f"""
+        <div style="
+            border-left: 8px solid {modelo_actual["color"]};
+            background-color: #F8F9FA;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        ">
+            <h2 style="margin-bottom: 5px;">
+                {modelo_actual["icono"]} {estudiante} – Modelo {modelo_actual["modelo"]}
+            </h2>
+            <h4 style="color: #555;">
+                {modelo_actual["descripcion"]}
+            </h4>
+            <p style="font-size: 17px; line-height: 1.6;">
+                {modelo_actual["interpretacion"]}
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+else:
+    st.warning("No se encontró un modelo final para el estudiante seleccionado.")
+    # ==========================================
+# IMAGEN DEL MODELO FINAL
+# ==========================================
+
+ruta_imagen_modelo = f"images/modelos_finales/{estudiante}.png"
+
+if os.path.exists(ruta_imagen_modelo):
+
+    st.image(
+        ruta_imagen_modelo,
+        caption=f"Figura representativa del modelo final - {estudiante}",
+        use_container_width=True
+    )
