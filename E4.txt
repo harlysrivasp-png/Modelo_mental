@@ -1,0 +1,333 @@
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from wordcloud import WordCloud
+from wordcloud import WordCloud, STOPWORDS
+import matplotlib.pyplot as plt
+import nltk
+from nltk.corpus import stopwords
+import string
+import base64
+from io import BytesIO
+
+# === Cargar archivo Excel ===
+df = pd.read_excel("C:/Users/hrivas/Desktop/Herramientas de Investigación/Python/E04/FASE1/plantilla_modelo_mental_fases_con_citasE04.xlsx")
+df.columns = [col.strip() for col in df.columns]
+df.rename(columns={"Dimensión": "Categoría"}, inplace=True)
+
+cols_cita = [col for col in df.columns if col.lower().startswith("cita")]
+fases = sorted(df["Fase"].dropna().unique())
+color_map = {"EP": "blue", "ON": "orange", "CL": "green", "MT": "red"}
+
+# Palabras clave del contexto ambiental
+palabras_contexto = {
+    "agua", "aire", "contaminación", "Cambio climático","desechos", "Fauna","recurso", "reforestación", "plástico", "bosque",
+    "energía", "ecosistema", "Flora","Fauna","vida","desechos","biodiversidad", "sostenible", "ambiente", "residuo", "suelo",
+    "planeta", "atmósfera", "cambio", "climático", "naturaleza", "calentamiento", "deforestación",
+    "basura", "químico", "animal", "vegetación", "degradación", "pérdida", "hábitat","Desforestación"
+}
+
+# Stopwords extendidas
+stopwords_es = STOPWORDS.union({
+    "así", "aquí", "ahora", "también", "etc", "den", "considero", "salgan", "dice", "cuales",
+    "ende", "ser", "puede", "tener", "pues", "hacer", "decir", "cada", "todo", "muy", "sin",
+    "mayor", "sino", "uno", "E01", "R1", "un", "una", "y", "de", "en", "el", "la", "lo", "del",
+    "al", "con", "por", "para", "que", "como","la","lo","se","los","mas","más","sd2","sd1","es","su","ejemplo"
+})
+
+
+# === Función para dividir texto en líneas ===
+def dividir_cita(cita, max_len=70):
+    palabras, lineas, linea_actual = cita.split(), [], ""
+    for palabra in palabras:
+        if len(linea_actual + " " + palabra) <= max_len:
+            linea_actual += " " + palabra if linea_actual else palabra
+        else:
+            lineas.append(linea_actual)
+            linea_actual = palabra
+    if linea_actual:
+        lineas.append(linea_actual)
+    return "<br>".join(lineas)
+
+# === Crear gráfico sunburst por fase ===
+def construir_frame_con_citas_hijas(fase):
+    data_fase = df[df["Fase"] == fase].copy()
+    data_fase["Subcategoría"] = data_fase["Subcategoría"].astype(str).str.strip().str.upper()
+    data_fase["Categoría"] = data_fase["Categoría"].astype(str).str.strip()
+
+    labels, parents, values, hovertexts, colors, texts = [], [], [], [], [], []
+    añadidos_dim, añadidos_sub = set(), set()
+
+    for _, row in data_fase.iterrows():
+        dim, sub, cod = row["Categoría"], row["Subcategoría"], row["Código"]
+        dim_label = f"📂 {dividir_cita(dim, max_len=13)}"
+        sub_label = f"🔶 {dividir_cita(sub, max_len=20)}"
+
+        if dim_label not in añadidos_dim:
+            labels.append(dim_label)
+            parents.append("")
+            values.append(5)
+            hovertexts.append(f"Categoría: {dim}")
+            colors.append(color_map.get(dim, "gray"))
+            texts.append("")
+            añadidos_dim.add(dim_label)
+
+        if sub_label not in añadidos_sub:
+            labels.append(sub_label)
+            parents.append(dim_label)
+            values.append(6)
+            hovertexts.append(f"Subcategoría: {sub}")
+            colors.append(color_map.get(dim, "gray"))
+            texts.append("")
+            añadidos_sub.add(sub_label)
+
+        cod_label = f"🟢  {dividir_cita(cod, max_len=13)}"
+        labels.append(cod_label)
+        parents.append(sub_label)
+        values.append(1)
+        hovertexts.append(dividir_cita(f"Código: {cod}"))
+        colors.append("purple")
+        texts.append("")
+
+        for cita_col in cols_cita:
+            if pd.notna(row[cita_col]):
+                cita_formateada = dividir_cita(str(row[cita_col]).strip()[:500])
+                cita_label = f"• {cita_formateada}"
+                labels.append(cita_label)
+                parents.append(cod_label)
+                values.append(1)
+                hovertexts.append(cita_formateada)
+                colors.append("lightgray")
+                texts.append(cita_formateada)
+
+    return go.Sunburst(labels=labels, parents=parents, values=values, hovertext=hovertexts,
+                       hoverinfo="text", text=texts, marker=dict(colors=colors),
+                       insidetextfont=dict(size=24, family="Arial"),
+                       hoverlabel=dict(bgcolor="white", font_size=16, align="left"),
+                       sort=False, branchvalues="remainder")
+
+# === Crear Sunburst por fases ===
+fig = make_subplots(rows=1, cols=len(fases), specs=[[{"type": "domain"}]*len(fases)],
+                    subplot_titles=[f"Fase {fase}" for fase in fases])
+
+for i, fase in enumerate(fases):
+    fig.add_trace(construir_frame_con_citas_hijas(fase), row=1, col=i+1)
+
+fig.update_layout(title="🌿 Evolución de Modelo Mental de Conciencia Ambiental E4 - (Ético–Afectivo)",
+                  margin=dict(t=100, l=40, r=40, b=0), height=750, showlegend=False)
+fig.write_html("temp_panel_citas.html", include_plotlyjs="cdn", full_html=False)
+
+# === Informe Comparativo ===
+informe = "<h2 style='font-family:Arial'>📘 Informe Comparativo entre Fases</h2><pre style='font-size:14px;font-family:Consolas;background:#f9f9f9;border:1px solid #ccc;padding:15px;'>"
+for i in range(len(fases)-1):
+    f1, f2 = fases[i], fases[i+1]
+    d1, d2 = df[df["Fase"] == f1], df[df["Fase"] == f2]
+    informe += f"<a id='fase-{f1}-{f2}'></a>\n📘 Comparación: Fase {f1} → Fase {f2}\n"
+    for dim in sorted(set(d1["Categoría"]).union(d2["Categoría"])):
+        s1 = set(d1[d1["Categoría"] == dim]["Subcategoría"].str.strip().str.upper())
+        s2 = set(d2[d2["Categoría"] == dim]["Subcategoría"].str.strip().str.upper())
+        c1 = set(d1[d1["Categoría"] == dim]["Código"])
+        c2 = set(d2[d2["Categoría"] == dim]["Código"])
+        informe += f"\n 📂 Categoría: {dim}\n"
+        informe += f"  🧿 Subcategorías nuevas: {', '.join(sorted(s2 - s1)) or 'Ninguna'}\n"
+        informe += f"  🔶 Subcategorías que desaparecen: {', '.join(sorted(s1 - s2)) or 'Ninguna'}\n"
+        informe += f"  🟢 Códigos persistentes: {', '.join(sorted(c1 & c2)) or 'Ninguno'}\n"
+        informe += f"  ➕ Códigos nuevos: {', '.join(sorted(c2 - c1)) or 'Ninguno'}\n"
+        informe += f"  ❌ Códigos que desaparecen: {', '.join(sorted(c1 - c2)) or 'Ninguno'}\n"
+informe += "</pre>"
+
+# === Tabla resumen por Categoría ===
+resumen_dim = "<h2 style='font-family:Arial;margin:30px 10px 10px;'>📊 Resumen por Categoría</h2><table style='font-family:Arial; border-collapse: collapse; width:95%; margin: 10px;'><tr style='background:#eee;'><th style='border:1px solid #ccc; padding:8px;'>📂 Categoría</th><th style='border:1px solid #ccc; padding:8px;'>🔶 Subcategorías</th><th style='border:1px solid #ccc; padding:8px;'>🟢 Códigos</th><th style='border:1px solid #ccc; padding:8px;'>📘 Citas</th></tr>"
+for dim in df["Categoría"].unique():
+    subcats = df[df["Categoría"] == dim]["Subcategoría"].nunique()
+    codigos = df[df["Categoría"] == dim]["Código"].nunique()
+    citas = df[df["Categoría"] == dim][cols_cita].count().sum()
+    resumen_dim += f"<tr><td style='border:1px solid #ccc; padding:8px;'>{dim}</td><td style='border:1px solid #ccc; padding:8px;'>{subcats}</td><td style='border:1px solid #ccc; padding:8px;'>{codigos}</td><td style='border:1px solid #ccc; padding:8px;'>{citas}</td></tr>"
+resumen_dim += "</table>"
+
+# === Gráfico Radar ===
+dimensiones = ["EP", "ON", "CL", "MT"]
+resumen_radar = df.groupby(["Fase", "Categoría"]).size().reset_index(name="Frecuencia")
+resumen_radar = resumen_radar.pivot(index="Fase", columns="Categoría", values="Frecuencia").fillna(0)
+for dim in dimensiones:
+    if dim not in resumen_radar.columns:
+        resumen_radar[dim] = 0
+resumen_radar["Fase"] = resumen_radar.index.astype(str)
+fig_radar = go.Figure()
+for idx, row in resumen_radar.iterrows():
+    fig_radar.add_trace(go.Scatterpolar(r=row[dimensiones].values, theta=dimensiones, fill='toself', name=f"Fase {row['Fase']}"))
+fig_radar.update_layout(title="📈 Evolución del Modelo Mental por Dimensiones", polar=dict(radialaxis=dict(visible=False)), height=550)
+radar_html = fig_radar.to_html(include_plotlyjs=False, full_html=False)
+
+leyenda_radar = """
+<div style='font-family:Arial; margin:10px 40px; max-width:800px;'>
+  <h3>🔍 Interpretación del Radar</h3>
+  <p>Este gráfico muestra la intensidad de participación de cada dimensión (EP, ON, CL, MT) en cada fase del modelo mental. 
+  Una mayor extensión indica un modelo más robusto o integrado en esa dimensión específica.</p>
+</div>
+"""
+
+# === Mapa de Calor ===
+df_heatmap = resumen_radar.set_index("Fase")[dimensiones]
+fig_heatmap = go.Figure(data=go.Heatmap(
+    z=df_heatmap.values,
+    x=dimensiones,
+    y=df_heatmap.index,
+    colorscale="YlOrRd",
+    showscale=True,
+    colorbar=dict(title="Frecuencia"),
+    text=df_heatmap.values.astype(int),
+    texttemplate="%{text}",
+    hoverinfo="x+y+z"
+))
+fig_heatmap.update_layout(title="🔥 Mapa de Calor por Fase y Dimensión", xaxis=dict(side="top"), height=500)
+heatmap_html = fig_heatmap.to_html(include_plotlyjs=False, full_html=False)
+
+
+# === Botones y scroll ===
+botones = "<div style='margin: 20px 10px;'>"
+for i in range(len(fases) - 1):
+    f1, f2 = fases[i], fases[i + 1]
+    botones += f"<a href='#fase-{f1}-{f2}' style='margin-right: 10px; text-decoration:none; padding:5px 10px; background:#007BFF; color:white; border-radius:8px; font-size:16px;'>🔽 Fase {f1} → Fase {f2}</a>"
+botones += "</div>"
+
+boton_arriba = "<div style='position: fixed; bottom: 20px; right: 20px; z-index: 1000;'><a href='#' style='text-decoration:none; padding:10px 15px; background:#28a745; color:white; border-radius:50%; font-size:22px;'>⬆️</a></div>"
+
+
+# === Escribir HTML final ===
+with open("temp_panel_citas.html", "r", encoding="utf-8") as f:
+    html_grafico = f.read()
+
+with open("panel_citas_con_informe.html", "w", encoding="utf-8") as f:
+    f.write("<html><head><meta charset='utf-8'><title>Modelo Mental Ambiental</title>")
+    f.write('<script src="https://cdn.plot.ly/plotly-latest.min.js"></script></head><body style="margin:0">')
+    f.write(html_grafico)
+    f.write(radar_html)
+    f.write(heatmap_html)
+    f.write(botones)
+    f.write(resumen_dim)
+    f.write(informe)
+    f.write(boton_arriba)
+    f.write("</body></html>")
+
+print("✅ Archivo generado: panel_citas_con_informe.html")
+# Radar de evolución por dimensión
+resumen_radar = df.groupby(["Fase", "Categoría"]).size().reset_index(name="Frecuencia")
+resumen_radar = resumen_radar.pivot(index="Fase", columns="Categoría", values="Frecuencia").fillna(0)
+dimensiones_ordenadas = ["EP", "ON", "CL", "MT"]
+for dim in dimensiones_ordenadas:
+    if dim not in resumen_radar.columns:
+        resumen_radar[dim] = 0
+resumen_radar = resumen_radar[dimensiones_ordenadas]
+resumen_radar["Fase"] = resumen_radar.index.astype(str)
+
+fig_radar = go.Figure()
+for idx, row in resumen_radar.iterrows():
+    fig_radar.add_trace(go.Scatterpolar(
+        r=row[dimensiones_ordenadas].values,
+        theta=dimensiones_ordenadas,
+        fill='toself',
+        name=f"Fase {row['Fase']}"
+    ))
+fig_radar.update_layout(
+    polar=dict(radialaxis=dict(visible=False)),
+    title="📈 Evolución del Modelo Mental por Dimensiones",
+    showlegend=True,
+    height=600
+)
+radar_html = fig_radar.to_html(include_plotlyjs=False, full_html=False)
+
+leyenda_radar = """
+<div style='font-family:Arial; margin:10px 40px; max-width:800px;'>
+  <h3>🔍 Interpretación del Radar</h3>
+  <p>Este gráfico muestra la intensidad de participación de cada dimensión (EP, ON, CL, MT) en cada fase del modelo mental. 
+  Una mayor extensión indica un modelo más robusto o integrado en esa dimensión específica.</p>
+</div>
+"""
+leyenda_Modelo = """
+<div style='font-family:Arial; margin:10px 40px; max-width:800px;'>
+  <h3>🔍 Interpretación Modelo Ético–Afectivo</h3>
+  <p><strong>Ético–Afectivo:</strong> se fundamenta en una relación emocional y moral con el ambiente, basada en el cuidado, el respeto y la empatía hacia la naturaleza.
+El estudiante expresa preocupación ambiental a partir de valores, sentimientos y experiencias personales significativas.
+Las problemáticas ambientales se interpretan desde una sensibilidad ética más que desde un análisis técnico o sistémico.
+Predomina una motivación intrínseca para proteger el entorno, orientada por principios de responsabilidad y compromiso personal.
+Este modelo impulsa acciones ambientales guiadas por la conciencia moral y el vínculo afectivo con el entorno natural.
+</p>
+ </div>
+"""
+# Mapa de calor de frecuencias por fase y categoría
+pivot_df = df.groupby(["Fase", "Categoría"]).size().unstack(fill_value=0).reindex(columns=dimensiones_ordenadas)
+heatmap_fig = go.Figure(data=go.Heatmap(
+    z=pivot_df.values,
+    x=pivot_df.columns,
+    y=pivot_df.index.astype(str),
+    colorscale="YlGnBu",
+    showscale=False  # sin barra de valores
+))
+heatmap_fig.update_layout(
+    title="🔥 Mapa de Calor de Frecuencia por Dimensión y Fase",
+    xaxis_title="Dimensión",
+    yaxis_title="Fase",
+    height=500,
+    margin=dict(l=50, r=50, t=50, b=50)
+)
+heatmap_html = heatmap_fig.to_html(include_plotlyjs=False, full_html=False)
+
+# Leyenda textual al lado del mapa de calor
+leyenda_html = """
+<div style='display:flex; gap:30px; margin:30px; font-family:Arial;'>
+  <div style='flex:1;'>""" + heatmap_html + """</div>
+  <div style='flex:0.5; font-size:16px; line-height:1.6;'>
+    <h3 style='margin-top:0;'>🗺️ Leyenda Interpretativa</h3>
+    <p><b>📂 EP</b>: Epistemológica — Representa cómo se construye el conocimiento ambiental y su nivel de profundidad.</p>
+    <p><b>📂 ON</b>: Ontológica — Refleja la comprensión sobre la relación entre el ser humano y la naturaleza.</p>
+    <p><b>📂 CL</b>: Cognitivo-Lingüística — Indica el nivel de articulación conceptual y lenguaje técnico empleado.</p>
+    <p><b>📂 MT</b>: Motivacional — Expresa el nivel de compromiso, acción y sensibilidad ambiental mostrada.</p>
+    <hr>
+    <p><b>🧭 Interpretación del Mapa de Calor</b> = Los tonos más oscuros indican mayor frecuencia de menciones o categorías en una dimensión durante una fase específica. Permite visualizar rápidamente la evolución de las dimensiones a través del tiempo o fases.</p>
+  </div>
+</div>
+"""
+
+# Leer gráfico sunburst generado previamente
+with open("temp_panel_citas.html", "r", encoding="utf-8") as f:
+    html_grafico = f.read()
+
+    # --- NUBES DE PALABRAS POR FASE CORREGIDAS ---
+nubes_html = "<h3>☁️ Nube de Palabras por Fase</h3><div style='display:flex;flex-wrap:wrap;'>"
+for fase in fases:
+    # Recoger solo textos no nulos
+    textos = []
+    for col in cols_cita:
+        serie = df[df["Fase"]==fase][col].dropna().astype(str).tolist()
+        textos.extend(serie)
+    texto = " ".join(textos).lower()
+    # Filtrar por contexto ambiental y stopwords
+    palabras = [w.strip(string.punctuation) for w in texto.split()
+                if w in palabras_contexto and w not in stopwords_es]
+    wc = WordCloud(width=400, height=300, background_color="white",
+                   stopwords=stopwords_es).generate(" ".join(palabras))
+    buf = BytesIO(); wc.to_image().save(buf, format="PNG")
+    img_b64 = base64.b64encode(buf.getvalue()).decode()
+    nubes_html += f"<div style='margin:10px'><h4>Fase {fase}</h4><img src='data:image/png;base64,{img_b64}'></div>"
+nubes_html += "</div>"
+
+# Escribir panel final
+with open("panel_citas_con_informe.html", "w", encoding="utf-8") as f:
+    f.write("<html><head><meta charset='utf-8'><title>Modelo Mental Ambiental</title>")
+    f.write('<script src="https://cdn.plot.ly/plotly-latest.min.js"></script></head><body style="margin:0">')
+    f.write(html_grafico)              # Gráficos sunburst por fase
+    f.write("<div style='display:flex;flex-direction:row;'>")
+    f.write("<div style='width:60%'>" + radar_html + "</div>")
+    f.write("<div style='width:40%'>" + leyenda_radar + "</div>")
+    f.write("<div style='width:40%'>" + leyenda_Modelo + "</div>")
+    f.write("</div><hr>")
+    f.write(leyenda_html)             # Mapa de calor + leyenda textual interpretativa
+    f.write("<hr>"+nubes_html)
+    f.write(botones)                   # Botones de navegación
+    f.write(resumen_dim)              # Tabla resumen
+    f.write(informe)                  # Informe comparativo
+    f.write(boton_arriba)
+    f.write("</body></html>")
+
+print("✅ Panel generado con radar, mapa de calor y leyenda: panel_citas_con_informe.html")
