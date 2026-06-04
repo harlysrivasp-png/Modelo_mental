@@ -14,7 +14,7 @@ from modulos.wordcloud import crear_wordcloud
 from modulos.informe import generar_informe
 from modulos.exportar_word import generar_word
 from modulos.sankey import crear_sankey
-
+from modulos.wordcloud import crear_wordcloud
 
 # ==========================================
 # CONFIGURACIÓN
@@ -203,7 +203,146 @@ with col3:
     st.write("Columnas de citas")
 
     st.write(cols_cita)
+# ==========================================
+# DOCUMENTOS ATLAS.ti POR ESTUDIANTE Y FASE
+# ==========================================
 
+st.markdown("---")
+
+st.subheader("📄 Documentos ATLAS.ti por estudiante y fase")
+
+st.markdown("""
+Esta sección permite consultar los documentos utilizados en ATLAS.ti
+para cada estudiante y para cada fase del análisis.
+""")
+
+ruta_base_documentos = "documentos"
+
+ruta_documentos_estudiante = os.path.join(
+    ruta_base_documentos,
+    estudiante
+)
+
+if not os.path.exists(ruta_documentos_estudiante):
+
+    st.warning(
+        f"No se encontró la carpeta de documentos para el estudiante {estudiante}. "
+        f"Verifique que exista la ruta: {ruta_documentos_estudiante}"
+    )
+
+else:
+
+    fases_documentos = {
+        "FASE 1": [
+            "FASE1",
+            "Fase1",
+            "fase1",
+            "FASE_1",
+            "fase_1"
+        ],
+        "FASE 2": [
+            "FASE2",
+            "Fase2",
+            "fase2",
+            "FASE_2",
+            "fase_2"
+        ],
+        "FASE 3": [
+            "FASE3",
+            "Fase3",
+            "fase3",
+            "FASE_3",
+            "fase_3"
+        ]
+    }
+
+    tab_doc1, tab_doc2, tab_doc3 = st.tabs(
+        [
+            "Documentos FASE 1",
+            "Documentos FASE 2",
+            "Documentos FASE 3"
+        ]
+    )
+
+    tabs_documentos = {
+        "FASE 1": tab_doc1,
+        "FASE 2": tab_doc2,
+        "FASE 3": tab_doc3
+    }
+
+    for nombre_fase, tab in tabs_documentos.items():
+
+        with tab:
+
+            st.markdown(
+                f"### Documentos usados en {nombre_fase} - {estudiante}"
+            )
+
+            carpeta_fase_encontrada = None
+
+            for nombre_carpeta in fases_documentos[nombre_fase]:
+
+                ruta_fase = os.path.join(
+                    ruta_documentos_estudiante,
+                    nombre_carpeta
+                )
+
+                if os.path.exists(ruta_fase):
+                    carpeta_fase_encontrada = ruta_fase
+                    break
+
+            if carpeta_fase_encontrada is None:
+
+                st.warning(
+                    f"No se encontró carpeta de documentos para {nombre_fase} del estudiante {estudiante}."
+                )
+
+            else:
+
+                archivos = sorted([
+                    archivo for archivo in os.listdir(carpeta_fase_encontrada)
+                    if os.path.isfile(
+                        os.path.join(carpeta_fase_encontrada, archivo)
+                    )
+                ])
+
+                if len(archivos) == 0:
+
+                    st.info(
+                        f"No hay documentos cargados en {nombre_fase} para {estudiante}."
+                    )
+
+                else:
+
+                    st.write(
+                        f"Se encontraron {len(archivos)} documentos."
+                    )
+
+                    for archivo in archivos:
+
+                        ruta_archivo = os.path.join(
+                            carpeta_fase_encontrada,
+                            archivo
+                        )
+
+                        st.markdown(f"**📎 {archivo}**")
+
+                        try:
+                            with open(ruta_archivo, "rb") as f:
+                                contenido = f.read()
+
+                            st.download_button(
+                                label=f"Descargar {archivo}",
+                                data=contenido,
+                                file_name=archivo,
+                                mime="application/octet-stream",
+                                key=f"{estudiante}_{nombre_fase}_{archivo}"
+                            )
+
+                        except Exception as e:
+                            st.error(
+                                f"No se pudo cargar el documento {archivo}: {e}"
+                            )
 # ==========================================
 # MUESTRA DE DATOS
 # ==========================================
@@ -378,146 +517,7 @@ else:
                     f"No se encontró imagen para {nombre_fase} del estudiante {estudiante}."
                 )
 
-                # ==========================================
-# DOCUMENTOS ATLAS.ti POR ESTUDIANTE Y FASE
-# ==========================================
-
-st.markdown("---")
-
-st.subheader("📄 Documentos ATLAS.ti por estudiante y fase")
-
-st.markdown("""
-Esta sección permite consultar los documentos utilizados en ATLAS.ti
-para cada estudiante y para cada fase del análisis.
-""")
-
-ruta_base_documentos = "documentos"
-
-ruta_documentos_estudiante = os.path.join(
-    ruta_base_documentos,
-    estudiante
-)
-
-if not os.path.exists(ruta_documentos_estudiante):
-
-    st.warning(
-        f"No se encontró la carpeta de documentos para el estudiante {estudiante}. "
-        f"Verifique que exista la ruta: {ruta_documentos_estudiante}"
-    )
-
-else:
-
-    fases_documentos = {
-        "FASE 1": [
-            "FASE1",
-            "Fase1",
-            "fase1",
-            "FASE_1",
-            "fase_1"
-        ],
-        "FASE 2": [
-            "FASE2",
-            "Fase2",
-            "fase2",
-            "FASE_2",
-            "fase_2"
-        ],
-        "FASE 3": [
-            "FASE3",
-            "Fase3",
-            "fase3",
-            "FASE_3",
-            "fase_3"
-        ]
-    }
-
-    tab_doc1, tab_doc2, tab_doc3 = st.tabs(
-        [
-            "Documentos FASE 1",
-            "Documentos FASE 2",
-            "Documentos FASE 3"
-        ]
-    )
-
-    tabs_documentos = {
-        "FASE 1": tab_doc1,
-        "FASE 2": tab_doc2,
-        "FASE 3": tab_doc3
-    }
-
-    for nombre_fase, tab in tabs_documentos.items():
-
-        with tab:
-
-            st.markdown(
-                f"### Documentos usados en {nombre_fase} - {estudiante}"
-            )
-
-            carpeta_fase_encontrada = None
-
-            for nombre_carpeta in fases_documentos[nombre_fase]:
-
-                ruta_fase = os.path.join(
-                    ruta_documentos_estudiante,
-                    nombre_carpeta
-                )
-
-                if os.path.exists(ruta_fase):
-                    carpeta_fase_encontrada = ruta_fase
-                    break
-
-            if carpeta_fase_encontrada is None:
-
-                st.warning(
-                    f"No se encontró carpeta de documentos para {nombre_fase} del estudiante {estudiante}."
-                )
-
-            else:
-
-                archivos = sorted([
-                    archivo for archivo in os.listdir(carpeta_fase_encontrada)
-                    if os.path.isfile(
-                        os.path.join(carpeta_fase_encontrada, archivo)
-                    )
-                ])
-
-                if len(archivos) == 0:
-
-                    st.info(
-                        f"No hay documentos cargados en {nombre_fase} para {estudiante}."
-                    )
-
-                else:
-
-                    st.write(
-                        f"Se encontraron {len(archivos)} documentos."
-                    )
-
-                    for archivo in archivos:
-
-                        ruta_archivo = os.path.join(
-                            carpeta_fase_encontrada,
-                            archivo
-                        )
-
-                        st.markdown(f"**📎 {archivo}**")
-
-                        try:
-                            with open(ruta_archivo, "rb") as f:
-                                contenido = f.read()
-
-                            st.download_button(
-                                label=f"Descargar {archivo}",
-                                data=contenido,
-                                file_name=archivo,
-                                mime="application/octet-stream",
-                                key=f"{estudiante}_{nombre_fase}_{archivo}"
-                            )
-
-                        except Exception as e:
-                            st.error(
-                                f"No se pudo cargar el documento {archivo}: {e}"
-                            )
+                
 # ======================================
 # SANKEY EVOLUTIVO
 # ======================================
