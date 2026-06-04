@@ -212,7 +212,7 @@ st.markdown("---")
 st.subheader("📄 Documentos ATLAS.ti por estudiante y fase")
 
 st.markdown("""
-Esta sección permite consultar los documentos utilizados en ATLAS.ti
+Esta sección permite consultar y descargar los documentos utilizados en ATLAS.ti
 para cada estudiante y para cada fase del análisis.
 """)
 
@@ -233,27 +233,9 @@ if not os.path.exists(ruta_documentos_estudiante):
 else:
 
     fases_documentos = {
-        "FASE 1": [
-            "FASE1",
-            "Fase1",
-            "fase1",
-            "FASE_1",
-            "fase_1"
-        ],
-        "FASE 2": [
-            "FASE2",
-            "Fase2",
-            "fase2",
-            "FASE_2",
-            "fase_2"
-        ],
-        "FASE 3": [
-            "FASE3",
-            "Fase3",
-            "fase3",
-            "FASE_3",
-            "fase_3"
-        ]
+        "FASE 1": ["FASE1", "Fase1", "fase1", "FASE_1", "fase_1"],
+        "FASE 2": ["FASE2", "Fase2", "fase2", "FASE_2", "fase_2"],
+        "FASE 3": ["FASE3", "Fase3", "fase3", "FASE_3", "fase_3"]
     }
 
     tab_doc1, tab_doc2, tab_doc3 = st.tabs(
@@ -294,7 +276,8 @@ else:
             if carpeta_fase_encontrada is None:
 
                 st.warning(
-                    f"No se encontró carpeta de documentos para {nombre_fase} del estudiante {estudiante}."
+                    f"No se encontró carpeta de documentos para {nombre_fase} "
+                    f"del estudiante {estudiante}."
                 )
 
             else:
@@ -309,40 +292,81 @@ else:
                 if len(archivos) == 0:
 
                     st.info(
-                        f"No hay documentos cargados en {nombre_fase} para {estudiante}."
+                        f"No hay documentos cargados en {nombre_fase} "
+                        f"para {estudiante}."
                     )
 
                 else:
 
-                    st.write(
+                    st.success(
                         f"Se encontraron {len(archivos)} documentos."
                     )
 
-                    for archivo in archivos:
+                    with st.expander("Ver lista de documentos encontrados"):
+                        st.write(archivos)
 
-                        ruta_archivo = os.path.join(
-                            carpeta_fase_encontrada,
-                            archivo
-                        )
+                    # ==========================================
+                    # MOSTRAR DOCUMENTOS EN FILAS DE 3 COLUMNAS
+                    # ==========================================
 
-                        st.markdown(f"**📎 {archivo}**")
+                    num_columnas = 3
 
-                        try:
-                            with open(ruta_archivo, "rb") as f:
-                                contenido = f.read()
+                    for inicio in range(0, len(archivos), num_columnas):
 
-                            st.download_button(
-                                label=f"Descargar {archivo}",
-                                data=contenido,
-                                file_name=archivo,
-                                mime="application/octet-stream",
-                                key=f"{estudiante}_{nombre_fase}_{archivo}"
+                        fila_archivos = archivos[
+                            inicio:inicio + num_columnas
+                        ]
+
+                        columnas_docs = st.columns(num_columnas)
+
+                        for idx, archivo in enumerate(fila_archivos):
+
+                            ruta_archivo = os.path.join(
+                                carpeta_fase_encontrada,
+                                archivo
                             )
 
-                        except Exception as e:
-                            st.error(
-                                f"No se pudo cargar el documento {archivo}: {e}"
-                            )
+                            with columnas_docs[idx]:
+
+                                st.markdown(
+                                    f"""
+                                    <div style="
+                                        border: 1px solid #D9D9D9;
+                                        border-radius: 10px;
+                                        padding: 12px;
+                                        margin-bottom: 8px;
+                                        background-color: #F8F9FA;
+                                        min-height: 90px;
+                                        font-size: 14px;
+                                        word-wrap: break-word;
+                                    ">
+                                        <b>📎 {archivo}</b>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+
+                                try:
+                                    with open(ruta_archivo, "rb") as f:
+                                        contenido = f.read()
+
+                                    st.download_button(
+                                        label="Descargar",
+                                        data=contenido,
+                                        file_name=archivo,
+                                        mime="application/octet-stream",
+                                        key=(
+                                            f"doc_{estudiante}_"
+                                            f"{nombre_fase}_"
+                                            f"{inicio}_{idx}_{archivo}"
+                                        )
+                                    )
+
+                                except Exception as e:
+                                    st.error(
+                                        f"No se pudo cargar el documento "
+                                        f"{archivo}: {e}"
+                                    )
 # ==========================================
 # MUESTRA DE DATOS
 # ==========================================
