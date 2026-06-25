@@ -276,7 +276,7 @@ def crear_sankey(df):
         if nombre == "Todas":
             titulo = ""
         else:
-            titulo = f"Evolución del Modelo Mental de Conciencia Ambiental - {nombre}"
+            titulo = f" - {nombre}"
 
         botones.append(
             dict(
