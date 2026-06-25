@@ -3,14 +3,16 @@ import plotly.graph_objects as go
 from collections import defaultdict
 
 
-def acortar_texto(texto, max_len=22):
+def acortar_texto(texto, max_len=32):
     """
     Acorta etiquetas largas para mejorar la legibilidad del Sankey.
     El texto completo se conserva en el hover.
     """
     texto = str(texto).strip()
+
     if len(texto) <= max_len:
         return texto
+
     return texto[:max_len - 3] + "..."
 
 
@@ -52,7 +54,11 @@ def crear_sankey(df):
             subcategoria = f"{fase} | {row['Subcategoría']}"
             codigo = f"{fase} | {row['Código']}"
 
-            nodos.extend([categoria, subcategoria, codigo])
+            nodos.extend([
+                categoria,
+                subcategoria,
+                codigo
+            ])
 
             enlaces.append((categoria, subcategoria, 1))
             enlaces.append((subcategoria, codigo, 1))
@@ -67,18 +73,25 @@ def crear_sankey(df):
         df_actual = df[df["Fase"] == fase_actual]
         df_sig = df[df["Fase"] == fase_siguiente]
 
-        comunes = set(df_actual["Código"]).intersection(set(df_sig["Código"]))
+        comunes = set(df_actual["Código"]).intersection(
+            set(df_sig["Código"])
+        )
 
         for codigo in comunes:
             origen = f"{fase_actual} | {codigo}"
             destino = f"{fase_siguiente} | {codigo}"
+
             enlaces.append((origen, destino, 1))
 
     # ==============================
     # Nodos únicos
     # ==============================
     nodos = list(dict.fromkeys(nodos))
-    mapa_nodos = {nodo: i for i, nodo in enumerate(nodos)}
+
+    mapa_nodos = {
+        nodo: i
+        for i, nodo in enumerate(nodos)
+    }
 
     # ==============================
     # Agrupar enlaces repetidos
@@ -109,9 +122,13 @@ def crear_sankey(df):
 
         if " | " in nodo:
             fase, texto = nodo.split(" | ", 1)
-            etiquetas_cortas.append(f"{fase} | {acortar_texto(texto, 20)}")
+            etiquetas_cortas.append(
+                f"{fase} | {acortar_texto(texto, 32)}"
+            )
         else:
-            etiquetas_cortas.append(acortar_texto(nodo, 22))
+            etiquetas_cortas.append(
+                acortar_texto(nodo, 34)
+            )
 
     # ==============================
     # Colores de nodos
@@ -130,7 +147,11 @@ def crear_sankey(df):
         else:
             colores_nodos.append("#8E44AD")  # Morado
 
-    colores_enlaces = ["rgba(140,140,140,0.40)" for _ in source]
+    # Enlaces claros para evitar que el texto se vea sombreado o relleno
+    colores_enlaces = [
+        "rgba(180,180,180,0.22)"
+        for _ in source
+    ]
 
     # ==============================
     # Crear figura Sankey
@@ -141,19 +162,22 @@ def crear_sankey(df):
             valueformat=".0f",
 
             node=dict(
-                pad=35,
-                thickness=18,
+                pad=45,
+                thickness=16,
 
                 line=dict(
-                    color="rgba(70,70,70,0.55)",
-                    width=0.5
+                    color="rgba(40,40,40,0.35)",
+                    width=0.4
                 ),
 
                 label=etiquetas_cortas,
                 color=colores_nodos,
                 customdata=etiquetas_completas,
 
-                hovertemplate="<b>%{customdata}</b><extra></extra>",
+                hovertemplate=(
+                    "<b>%{customdata}</b>"
+                    "<extra></extra>"
+                ),
             ),
 
             link=dict(
@@ -183,7 +207,7 @@ def crear_sankey(df):
             font=dict(
                 family="Arial",
                 size=24,
-                color="#222222"
+                color="black"
             )
         ),
 
@@ -192,8 +216,8 @@ def crear_sankey(df):
 
         font=dict(
             family="Arial",
-            size=12,
-            color="#222222"
+            size=13,
+            color="black"
         ),
 
         margin=dict(
