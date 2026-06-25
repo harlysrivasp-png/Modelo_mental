@@ -305,7 +305,7 @@ def crear_sankey(df):
     fig.update_layout(
 
         title=dict(
-            text="Evolución del Modelo Mental de Conciencia Ambiental",
+            text="",
             x=0.5,
             y=0.88,
             xanchor="center",
