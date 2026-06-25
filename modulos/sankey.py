@@ -84,7 +84,9 @@ def crear_sankey(df):
     )
 
     # ==============================
-    # Crear nodos
+    # Crear nodos y enlaces
+    # Mantiene la estructura anterior:
+    # Categoría -> Subcategoría -> Código
     # ==============================
     nodos = []
     enlaces = []
@@ -103,7 +105,6 @@ def crear_sankey(df):
                 codigo
             ])
 
-            # Estructura interna de cada fase
             enlaces.append(
                 (categoria, subcategoria, 1)
             )
@@ -114,7 +115,6 @@ def crear_sankey(df):
 
     # ==============================
     # Evolución entre fases
-    # Mismo código en fases consecutivas
     # ==============================
     for i in range(len(fases) - 1):
         fase_actual = fases[i]
@@ -183,27 +183,68 @@ def crear_sankey(df):
         )
 
     # ==============================
-    # Posiciones por fase: F1 -> F2 -> F3
+    # Clasificar nodos por nivel
+    # Igual que antes:
+    # categoría izquierda,
+    # subcategoría centro,
+    # código derecha
     # ==============================
-    fase_x = {}
+    tipo_nodo = {}
 
-    if len(fases) == 1:
-        fase_x[fases[0]] = 0.08
-    else:
-        for i, fase in enumerate(fases):
-            fase_x[fase] = 0.05 + i * (0.88 / (len(fases) - 1))
-
-    nodos_por_fase = {}
+    categorias_validas = set()
+    subcategorias_validas = set()
+    codigos_validos = set()
 
     for fase in fases:
-        nodos_por_fase[fase] = [
-            nodo for nodo in nodos
-            if nodo.startswith(f"{fase} |")
-        ]
+        df_fase = df[df["Fase"] == fase]
+
+        for categoria in df_fase["Categoría"].dropna().unique():
+            categorias_validas.add(
+                f"{fase} | {categoria}"
+            )
+
+        for subcategoria in df_fase["Subcategoría"].dropna().unique():
+            subcategorias_validas.add(
+                f"{fase} | {subcategoria}"
+            )
+
+        for codigo in df_fase["Código"].dropna().unique():
+            codigos_validos.add(
+                f"{fase} | {codigo}"
+            )
+
+    for nodo in nodos:
+        if nodo in categorias_validas:
+            tipo_nodo[nodo] = "categoria"
+
+        elif nodo in subcategorias_validas:
+            tipo_nodo[nodo] = "subcategoria"
+
+        elif nodo in codigos_validos:
+            tipo_nodo[nodo] = "codigo"
+
+        else:
+            tipo_nodo[nodo] = "otro"
+
+    nodos_categoria = [
+        n for n in nodos
+        if tipo_nodo[n] == "categoria"
+    ]
+
+    nodos_subcategoria = [
+        n for n in nodos
+        if tipo_nodo[n] == "subcategoria"
+    ]
+
+    nodos_codigo = [
+        n for n in nodos
+        if tipo_nodo[n] == "codigo"
+    ]
 
     def posiciones_verticales(lista):
         """
-        Distribuye los nodos verticalmente dentro de cada fase.
+        Distribuye los nodos verticalmente.
+        El orden ya viene influenciado por F1, F2, F3.
         """
         n = len(lista)
 
@@ -216,30 +257,36 @@ def crear_sankey(df):
             }
 
         return {
-            nodo: 0.03 + i * (0.94 / (n - 1))
+            nodo: 0.02 + i * (0.96 / (n - 1))
             for i, nodo in enumerate(lista)
         }
 
-    y_por_fase = {
-        fase: posiciones_verticales(nodos_por_fase[fase])
-        for fase in fases
-    }
+    y_categoria = posiciones_verticales(nodos_categoria)
+    y_subcategoria = posiciones_verticales(nodos_subcategoria)
+    y_codigo = posiciones_verticales(nodos_codigo)
 
+    # ==============================
+    # Posiciones fijas como antes
+    # ==============================
     x_pos = []
     y_pos = []
 
     for nodo in nodos:
-        fase_nodo = nodo.split(" | ", 1)[0]
+        if tipo_nodo[nodo] == "categoria":
+            x_pos.append(0.03)
+            y_pos.append(y_categoria[nodo])
 
-        x_pos.append(
-            fase_x.get(fase_nodo, 0.5)
-        )
+        elif tipo_nodo[nodo] == "subcategoria":
+            x_pos.append(0.36)
+            y_pos.append(y_subcategoria[nodo])
 
-        y_pos.append(
-            y_por_fase
-            .get(fase_nodo, {})
-            .get(nodo, 0.5)
-        )
+        elif tipo_nodo[nodo] == "codigo":
+            x_pos.append(0.72)
+            y_pos.append(y_codigo[nodo])
+
+        else:
+            x_pos.append(0.50)
+            y_pos.append(0.50)
 
     # ==============================
     # Colores de nodos
@@ -377,29 +424,6 @@ def crear_sankey(df):
         )
 
     # ==============================
-    # Encabezados de fases
-    # ==============================
-    for fase in fases:
-        anotaciones.append(
-            dict(
-                x=fase_x.get(fase, 0.5),
-                y=1.04,
-                xref="paper",
-                yref="paper",
-                text=f"<b>{fase}</b>",
-                showarrow=False,
-                xanchor="center",
-                yanchor="bottom",
-
-                font=dict(
-                    family="Arial",
-                    size=18,
-                    color="#111111"
-                )
-            )
-        )
-
-    # ==============================
     # Layout
     # ==============================
     fig.update_layout(
@@ -427,7 +451,7 @@ def crear_sankey(df):
         margin=dict(
             l=40,
             r=40,
-            t=120,
+            t=90,
             b=40
         ),
 
