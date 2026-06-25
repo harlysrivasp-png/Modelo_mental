@@ -274,7 +274,7 @@ def crear_sankey(df):
         visible[i] = True
 
         if nombre == "Todas":
-            titulo = "Evolución del Modelo Mental de Conciencia Ambiental"
+            titulo = ""
         else:
             titulo = f"Evolución del Modelo Mental de Conciencia Ambiental - {nombre}"
 
