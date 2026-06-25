@@ -3,11 +3,7 @@ import plotly.graph_objects as go
 from collections import defaultdict
 
 
-def acortar_texto(texto, max_len=34):
-    """
-    Shortens long labels to improve Sankey readability.
-    The full text is preserved in the hover information.
-    """
+def acortar_texto(texto, max_len=22):
     texto = str(texto).strip()
     if len(texto) <= max_len:
         return texto
@@ -16,7 +12,7 @@ def acortar_texto(texto, max_len=34):
 
 def crear_sankey(df):
     # ==============================
-    # Clean data
+    # Limpiar datos
     # ==============================
     df = df.copy()
 
@@ -25,12 +21,9 @@ def crear_sankey(df):
         if col not in df.columns:
             raise ValueError(f"Falta la columna requerida: {col}")
 
-    df["Fase"] = df["Fase"].astype(str).str.strip()
-    df["Categoría"] = df["Categoría"].astype(str).str.strip()
-    df["Subcategoría"] = df["Subcategoría"].astype(str).str.strip()
-    df["Código"] = df["Código"].astype(str).str.strip()
+    for col in columnas_requeridas:
+        df[col] = df[col].astype(str).str.strip()
 
-    # Remove empty rows
     df = df[
         (df["Fase"] != "") &
         (df["Categoría"] != "") &
@@ -38,13 +31,13 @@ def crear_sankey(df):
         (df["Código"] != "")
     ].copy()
 
+    fases = sorted(df["Fase"].unique())
+
     # ==============================
-    # Create nodes and links
+    # Crear nodos y enlaces
     # ==============================
     nodos = []
     enlaces = []
-
-    fases = sorted(df["Fase"].unique())
 
     for fase in fases:
         df_fase = df[df["Fase"] == fase]
@@ -60,8 +53,7 @@ def crear_sankey(df):
             enlaces.append((subcategoria, codigo, 1))
 
     # ==============================
-    # Evolution between phases
-    # Same code appearing in consecutive phases
+    # Evolución entre fases
     # ==============================
     for i in range(len(fases) - 1):
         fase_actual = fases[i]
@@ -78,17 +70,15 @@ def crear_sankey(df):
             enlaces.append((origen, destino, 1))
 
     # ==============================
-    # Remove duplicate nodes
+    # Nodos únicos
     # ==============================
     nodos = list(dict.fromkeys(nodos))
-
     mapa_nodos = {nodo: i for i, nodo in enumerate(nodos)}
 
     # ==============================
-    # Group repeated links
+    # Agrupar enlaces repetidos
     # ==============================
     enlaces_agrupados = defaultdict(int)
-
     for s, t, v in enlaces:
         if s in mapa_nodos and t in mapa_nodos:
             enlaces_agrupados[(s, t)] += v
@@ -103,7 +93,7 @@ def crear_sankey(df):
         value.append(v)
 
     # ==============================
-    # Short labels + full hover labels
+    # Etiquetas cortas + hover completo
     # ==============================
     etiquetas_cortas = []
     etiquetas_completas = []
@@ -113,53 +103,48 @@ def crear_sankey(df):
 
         if " | " in nodo:
             fase, texto = nodo.split(" | ", 1)
-            etiquetas_cortas.append(f"{fase} | {acortar_texto(texto, 30)}")
+            etiquetas_cortas.append(f"{fase} | {acortar_texto(texto, 20)}")
         else:
-            etiquetas_cortas.append(acortar_texto(nodo, 34))
+            etiquetas_cortas.append(acortar_texto(nodo, 22))
 
     # ==============================
-    # Colors
+    # Colores nodos
     # ==============================
     colores_nodos = []
-
     for nodo in nodos:
         if "EP" in nodo:
-            colores_nodos.append("#1565C0")  # Blue
+            colores_nodos.append("#1565C0")
         elif "ON" in nodo:
-            colores_nodos.append("#F39C12")  # Orange
+            colores_nodos.append("#F39C12")
         elif "CL" in nodo:
-            colores_nodos.append("#2E7D32")  # Green
+            colores_nodos.append("#2E7D32")
         elif "MT" in nodo:
-            colores_nodos.append("#C62828")  # Red
+            colores_nodos.append("#C62828")
         else:
-            colores_nodos.append("#8E44AD")  # Purple
+            colores_nodos.append("#8E44AD")
 
-    colores_enlaces = ["rgba(160,160,160,0.32)" for _ in source]
+    # enlaces más suaves pero visibles
+    colores_enlaces = ["rgba(140,140,140,0.40)" for _ in source]
 
     # ==============================
-    # Sankey figure
+    # Figura Sankey
     # ==============================
     fig = go.Figure(
         go.Sankey(
             arrangement="snap",
+            valueformat=".0f",
 
             node=dict(
-                pad=28,
-                thickness=17,
-
+                pad=35,
+                thickness=18,
                 line=dict(
-                    color="rgba(60,60,60,0.45)",
-                    width=0.4
+                    color="rgba(70,70,70,0.55)",
+                    width=0.5
                 ),
-
                 label=etiquetas_cortas,
                 color=colores_nodos,
                 customdata=etiquetas_completas,
-
-                hovertemplate=(
-                    "<b>%{customdata}</b>"
-                    "<extra></extra>"
-                )
+                hovertemplate="<b>%{customdata}</b><extra></extra>",
             ),
 
             link=dict(
@@ -167,12 +152,10 @@ def crear_sankey(df):
                 target=target,
                 value=value,
                 color=colores_enlaces,
-
                 hovertemplate=(
                     "Origen: %{source.label}<br>"
                     "Destino: %{target.label}<br>"
-                    "Valor: %{value}"
-                    "<extra></extra>"
+                    "Valor: %{value}<extra></extra>"
                 )
             )
         )
@@ -187,28 +170,22 @@ def crear_sankey(df):
             x=0.5,
             xanchor="center",
             font=dict(
-                size=20,
-                family="Arial Narrow, Arial, sans-serif",
-                color="#333333"
+                family="Arial, sans-serif",
+                size=24,
+                color="#222222"
             )
         ),
 
-        width=1700,
-        height=1100,
+        width=2200,
+        height=1400,
 
         font=dict(
-            family="Arial Narrow, Arial, sans-serif",
-            size=9,
-            color="#444444"
+            family="Arial, sans-serif",
+            size=12,
+            color="#222222"
         ),
 
-        margin=dict(
-            l=30,
-            r=30,
-            t=80,
-            b=30
-        ),
-
+        margin=dict(l=40, r=40, t=90, b=40),
         paper_bgcolor="white",
         plot_bgcolor="white"
     )
