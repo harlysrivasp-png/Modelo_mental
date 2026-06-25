@@ -378,7 +378,7 @@ def crear_sankey(df):
                 align="left",
 
                 #bgcolor="rgba(255,255,255,0.70)",
-                bgcolor="rgba(255,255,255,0.85)"
+                bgcolor="rgba(255,255,255,0.85)",
                 bordercolor="rgba(255,255,255,0)",
                 borderwidth=0,
                 borderpad=1
