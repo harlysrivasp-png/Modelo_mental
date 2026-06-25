@@ -10,7 +10,7 @@ def acortar_texto(texto, max_len=28):
     return texto[:max_len - 3] + "..."
 
 
-def crear_sankey_mejorado(df):
+def crear_sankey(df):
     # ==============================
     # Limpiar datos
     # ==============================
