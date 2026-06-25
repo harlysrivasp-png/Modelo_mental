@@ -38,15 +38,6 @@ def ordenar_fases(fases):
     )
 
 
-def acortar_texto(texto, max_len=34):
-    texto = str(texto).strip()
-
-    if len(texto) <= max_len:
-        return texto
-
-    return texto[:max_len - 3] + "..."
-
-
 def construir_datos_sankey(df):
     # ==============================
     # Limpiar datos
@@ -183,24 +174,14 @@ def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
             thickness=25,
 
             line=dict(
-                color="black",
-                width=0.5
+                color="rgba(0,0,0,0.35)",
+                width=0.3
             ),
 
-            # Ocultamos las etiquetas nativas para evitar letras rellenas
-            label=[
-                ""
-                for _ in nodos
-            ],
+            # Se mantiene la etiqueta nativa para no cambiar la estructura
+            label=nodos,
 
-            color=colores,
-
-            customdata=nodos,
-
-            hovertemplate=(
-                "<b>%{customdata}</b>"
-                "<extra></extra>"
-            )
+            color=colores
         ),
 
         link=dict(
@@ -211,73 +192,13 @@ def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
 
             value=value,
 
+            # Enlaces más claros para que no ensucien visualmente la letra
             color=[
-                "rgba(180,180,180,0.25)"
+                "rgba(185,185,185,0.20)"
                 for _ in source
             ]
         )
     )
-
-
-def crear_anotaciones(nodos):
-    """
-    Crea etiquetas limpias y delgadas como anotaciones.
-    Se ubican en tres columnas aproximadas:
-    categorias, subcategorias y codigos.
-    """
-
-    anotaciones = []
-
-    # Separar nodos por posición aproximada según orden
-    n = len(nodos)
-
-    if n == 0:
-        return anotaciones
-
-    # Distribución vertical
-    for i, nodo in enumerate(nodos):
-
-        if " | " in nodo:
-            fase, texto = nodo.split(" | ", 1)
-            etiqueta = f"{fase} | {acortar_texto(texto, 34)}"
-        else:
-            etiqueta = acortar_texto(nodo, 34)
-
-        # Posiciones aproximadas por tipo de nodo
-        posicion = i % 3
-
-        if posicion == 0:
-            x = 0.03
-        elif posicion == 1:
-            x = 0.38
-        else:
-            x = 0.73
-
-        y = 0.98 - (i / max(n - 1, 1)) * 0.92
-
-        anotaciones.append(
-            dict(
-                x=x,
-                y=y,
-                xref="paper",
-                yref="paper",
-                text=etiqueta,
-                showarrow=False,
-                xanchor="left",
-                yanchor="middle",
-                font=dict(
-                    family="Arial",
-                    size=11,
-                    color="#111111"
-                ),
-                bgcolor="rgba(255,255,255,0.80)",
-                bordercolor="rgba(255,255,255,0)",
-                borderwidth=0,
-                borderpad=1
-            )
-        )
-
-    return anotaciones
 
 
 def crear_sankey(df):
@@ -295,7 +216,6 @@ def crear_sankey(df):
 
     traces = []
     nombres_botones = []
-    anotaciones_vistas = []
 
     # ==============================
     # Vista general
@@ -313,7 +233,6 @@ def crear_sankey(df):
 
     traces.append(trace_general)
     nombres_botones.append("Todas")
-    anotaciones_vistas.append(crear_anotaciones(nodos))
 
     fig.add_trace(trace_general)
 
@@ -339,7 +258,6 @@ def crear_sankey(df):
 
         traces.append(trace_fase)
         nombres_botones.append(fase)
-        anotaciones_vistas.append(crear_anotaciones(nodos_fase))
 
         fig.add_trace(trace_fase)
 
@@ -374,8 +292,7 @@ def crear_sankey(df):
                         "title": {
                             "text": titulo,
                             "x": 0.5
-                        },
-                        "annotations": anotaciones_vistas[i]
+                        }
                     }
                 ]
             )
@@ -393,12 +310,6 @@ def crear_sankey(df):
 
         height=1000,
 
-        font=dict(
-            family="Arial",
-            size=11,
-            color="#111111"
-        ),
-
         margin=dict(
             l=40,
             r=40,
@@ -406,7 +317,11 @@ def crear_sankey(df):
             b=40
         ),
 
-        annotations=anotaciones_vistas[0],
+        font=dict(
+            family="Arial",
+            size=10,
+            color="#222222"
+        ),
 
         updatemenus=[
             dict(
