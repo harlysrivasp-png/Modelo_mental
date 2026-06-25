@@ -318,7 +318,7 @@ def crear_sankey(df):
         font=dict(
             family="Verdana",
             size=10,
-            color="#222222"
+            color="rgba(40,40,40,0.82)"
         ),
 
         updatemenus=[
