@@ -4,6 +4,10 @@ from collections import defaultdict
 
 
 def acortar_texto(texto, max_len=22):
+    """
+    Acorta etiquetas largas para mejorar la legibilidad del Sankey.
+    El texto completo se conserva en el hover.
+    """
     texto = str(texto).strip()
     if len(texto) <= max_len:
         return texto
@@ -17,6 +21,7 @@ def crear_sankey(df):
     df = df.copy()
 
     columnas_requeridas = ["Fase", "Categoría", "Subcategoría", "Código"]
+
     for col in columnas_requeridas:
         if col not in df.columns:
             raise ValueError(f"Falta la columna requerida: {col}")
@@ -79,6 +84,7 @@ def crear_sankey(df):
     # Agrupar enlaces repetidos
     # ==============================
     enlaces_agrupados = defaultdict(int)
+
     for s, t, v in enlaces:
         if s in mapa_nodos and t in mapa_nodos:
             enlaces_agrupados[(s, t)] += v
@@ -108,26 +114,26 @@ def crear_sankey(df):
             etiquetas_cortas.append(acortar_texto(nodo, 22))
 
     # ==============================
-    # Colores nodos
+    # Colores de nodos
     # ==============================
     colores_nodos = []
+
     for nodo in nodos:
         if "EP" in nodo:
-            colores_nodos.append("#1565C0")
+            colores_nodos.append("#1565C0")  # Azul
         elif "ON" in nodo:
-            colores_nodos.append("#F39C12")
+            colores_nodos.append("#F39C12")  # Naranja
         elif "CL" in nodo:
-            colores_nodos.append("#2E7D32")
+            colores_nodos.append("#2E7D32")  # Verde
         elif "MT" in nodo:
-            colores_nodos.append("#C62828")
+            colores_nodos.append("#C62828")  # Rojo
         else:
-            colores_nodos.append("#8E44AD")
+            colores_nodos.append("#8E44AD")  # Morado
 
-    # enlaces más suaves pero visibles
     colores_enlaces = ["rgba(140,140,140,0.40)" for _ in source]
 
     # ==============================
-    # Figura Sankey
+    # Crear figura Sankey
     # ==============================
     fig = go.Figure(
         go.Sankey(
@@ -137,13 +143,16 @@ def crear_sankey(df):
             node=dict(
                 pad=35,
                 thickness=18,
+
                 line=dict(
                     color="rgba(70,70,70,0.55)",
                     width=0.5
                 ),
+
                 label=etiquetas_cortas,
                 color=colores_nodos,
                 customdata=etiquetas_completas,
+
                 hovertemplate="<b>%{customdata}</b><extra></extra>",
             ),
 
@@ -152,10 +161,12 @@ def crear_sankey(df):
                 target=target,
                 value=value,
                 color=colores_enlaces,
+
                 hovertemplate=(
                     "Origen: %{source.label}<br>"
                     "Destino: %{target.label}<br>"
-                    "Valor: %{value}<extra></extra>"
+                    "Valor: %{value}"
+                    "<extra></extra>"
                 )
             )
         )
@@ -170,7 +181,7 @@ def crear_sankey(df):
             x=0.5,
             xanchor="center",
             font=dict(
-                family="Arial, sans-serif",
+                family="Arial",
                 size=24,
                 color="#222222"
             )
@@ -180,12 +191,18 @@ def crear_sankey(df):
         height=1400,
 
         font=dict(
-            family="Arial, sans-serif",
+            family="Arial",
             size=12,
             color="#222222"
         ),
 
-        margin=dict(l=40, r=40, t=90, b=40),
+        margin=dict(
+            l=40,
+            r=40,
+            t=90,
+            b=40
+        ),
+
         paper_bgcolor="white",
         plot_bgcolor="white"
     )
