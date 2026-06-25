@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 from collections import defaultdict
 
 
-def acortar_texto(texto, max_len=34):
+def acortar_texto(texto, max_len=38):
     """
     Acorta etiquetas largas para mejorar la visualización.
     El texto completo se conserva en el hover.
@@ -18,7 +18,7 @@ def acortar_texto(texto, max_len=34):
 
 def ordenar_fases(fases):
     """
-    Ordena las fases de forma natural: F1, F2, F3.
+    Ordena las fases en secuencia: F1, F2, F3.
     """
     orden = {
         "F1": 1,
@@ -84,9 +84,8 @@ def crear_sankey(df):
     )
 
     # ==============================
-    # Crear nodos y enlaces
-    # Mantiene la estructura anterior:
-    # Categoría -> Subcategoría -> Código
+    # Crear nodos por fase
+    # Cada nodo representa un código dentro de una fase
     # ==============================
     nodos = []
     enlaces = []
@@ -94,34 +93,28 @@ def crear_sankey(df):
     for fase in fases:
         df_fase = df[df["Fase"] == fase]
 
-        for _, row in df_fase.iterrows():
-            categoria = f"{fase} | {row['Categoría']}"
-            subcategoria = f"{fase} | {row['Subcategoría']}"
-            codigo = f"{fase} | {row['Código']}"
+        codigos_fase = (
+            df_fase["Código"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .unique()
+        )
 
-            nodos.extend([
-                categoria,
-                subcategoria,
-                codigo
-            ])
-
-            enlaces.append(
-                (categoria, subcategoria, 1)
-            )
-
-            enlaces.append(
-                (subcategoria, codigo, 1)
-            )
+        for codigo in codigos_fase:
+            nodo = f"{fase} | {codigo}"
+            nodos.append(nodo)
 
     # ==============================
-    # Evolución entre fases
+    # Crear enlaces F1 -> F2 -> F3
+    # Conecta códigos que aparecen en fases consecutivas
     # ==============================
     for i in range(len(fases) - 1):
         fase_actual = fases[i]
         fase_siguiente = fases[i + 1]
 
         df_actual = df[df["Fase"] == fase_actual]
-        df_sig = df[df["Fase"] == fase_siguiente]
+        df_siguiente = df[df["Fase"] == fase_siguiente]
 
         codigos_actuales = set(
             df_actual["Código"]
@@ -131,23 +124,67 @@ def crear_sankey(df):
         )
 
         codigos_siguientes = set(
-            df_sig["Código"]
+            df_siguiente["Código"]
             .dropna()
             .astype(str)
             .str.strip()
         )
 
-        comunes = codigos_actuales.intersection(
+        codigos_comunes = codigos_actuales.intersection(
             codigos_siguientes
         )
 
-        for codigo in comunes:
+        for codigo in codigos_comunes:
             origen = f"{fase_actual} | {codigo}"
             destino = f"{fase_siguiente} | {codigo}"
 
             enlaces.append(
                 (origen, destino, 1)
             )
+
+    # ==============================
+    # Si no hay códigos iguales entre fases,
+    # conectar por subcategoría compartida
+    # ==============================
+    if len(enlaces) == 0:
+        for i in range(len(fases) - 1):
+            fase_actual = fases[i]
+            fase_siguiente = fases[i + 1]
+
+            df_actual = df[df["Fase"] == fase_actual]
+            df_siguiente = df[df["Fase"] == fase_siguiente]
+
+            subcategorias_comunes = set(
+                df_actual["Subcategoría"]
+                .dropna()
+                .astype(str)
+                .str.strip()
+            ).intersection(
+                set(
+                    df_siguiente["Subcategoría"]
+                    .dropna()
+                    .astype(str)
+                    .str.strip()
+                )
+            )
+
+            for subcat in subcategorias_comunes:
+                codigos_actuales = df_actual[
+                    df_actual["Subcategoría"] == subcat
+                ]["Código"].dropna().astype(str).str.strip().unique()
+
+                codigos_siguientes = df_siguiente[
+                    df_siguiente["Subcategoría"] == subcat
+                ]["Código"].dropna().astype(str).str.strip().unique()
+
+                for cod_actual in codigos_actuales:
+                    for cod_siguiente in codigos_siguientes:
+                        origen = f"{fase_actual} | {cod_actual}"
+                        destino = f"{fase_siguiente} | {cod_siguiente}"
+
+                        enlaces.append(
+                            (origen, destino, 1)
+                        )
 
     # ==============================
     # Nodos únicos
@@ -183,69 +220,25 @@ def crear_sankey(df):
         )
 
     # ==============================
-    # Clasificar nodos por nivel
-    # Igual que antes:
-    # categoría izquierda,
-    # subcategoría centro,
-    # código derecha
+    # Posiciones: F1 izquierda, F2 centro, F3 derecha
     # ==============================
-    tipo_nodo = {}
+    fase_x = {}
 
-    categorias_validas = set()
-    subcategorias_validas = set()
-    codigos_validos = set()
+    if len(fases) == 1:
+        fase_x[fases[0]] = 0.08
+    else:
+        for i, fase in enumerate(fases):
+            fase_x[fase] = 0.05 + i * (0.88 / (len(fases) - 1))
+
+    nodos_por_fase = {}
 
     for fase in fases:
-        df_fase = df[df["Fase"] == fase]
-
-        for categoria in df_fase["Categoría"].dropna().unique():
-            categorias_validas.add(
-                f"{fase} | {categoria}"
-            )
-
-        for subcategoria in df_fase["Subcategoría"].dropna().unique():
-            subcategorias_validas.add(
-                f"{fase} | {subcategoria}"
-            )
-
-        for codigo in df_fase["Código"].dropna().unique():
-            codigos_validos.add(
-                f"{fase} | {codigo}"
-            )
-
-    for nodo in nodos:
-        if nodo in categorias_validas:
-            tipo_nodo[nodo] = "categoria"
-
-        elif nodo in subcategorias_validas:
-            tipo_nodo[nodo] = "subcategoria"
-
-        elif nodo in codigos_validos:
-            tipo_nodo[nodo] = "codigo"
-
-        else:
-            tipo_nodo[nodo] = "otro"
-
-    nodos_categoria = [
-        n for n in nodos
-        if tipo_nodo[n] == "categoria"
-    ]
-
-    nodos_subcategoria = [
-        n for n in nodos
-        if tipo_nodo[n] == "subcategoria"
-    ]
-
-    nodos_codigo = [
-        n for n in nodos
-        if tipo_nodo[n] == "codigo"
-    ]
+        nodos_por_fase[fase] = [
+            nodo for nodo in nodos
+            if nodo.startswith(f"{fase} |")
+        ]
 
     def posiciones_verticales(lista):
-        """
-        Distribuye los nodos verticalmente.
-        El orden ya viene influenciado por F1, F2, F3.
-        """
         n = len(lista)
 
         if n == 0:
@@ -257,81 +250,68 @@ def crear_sankey(df):
             }
 
         return {
-            nodo: 0.02 + i * (0.96 / (n - 1))
+            nodo: 0.03 + i * (0.94 / (n - 1))
             for i, nodo in enumerate(lista)
         }
 
-    y_categoria = posiciones_verticales(nodos_categoria)
-    y_subcategoria = posiciones_verticales(nodos_subcategoria)
-    y_codigo = posiciones_verticales(nodos_codigo)
+    y_por_fase = {
+        fase: posiciones_verticales(nodos_por_fase[fase])
+        for fase in fases
+    }
 
-    # ==============================
-    # Posiciones fijas como antes
-    # ==============================
     x_pos = []
     y_pos = []
 
     for nodo in nodos:
-        if tipo_nodo[nodo] == "categoria":
-            x_pos.append(0.03)
-            y_pos.append(y_categoria[nodo])
+        fase_nodo = nodo.split(" | ", 1)[0]
 
-        elif tipo_nodo[nodo] == "subcategoria":
-            x_pos.append(0.36)
-            y_pos.append(y_subcategoria[nodo])
+        x_pos.append(
+            fase_x.get(fase_nodo, 0.5)
+        )
 
-        elif tipo_nodo[nodo] == "codigo":
-            x_pos.append(0.72)
-            y_pos.append(y_codigo[nodo])
-
-        else:
-            x_pos.append(0.50)
-            y_pos.append(0.50)
+        y_pos.append(
+            y_por_fase
+            .get(fase_nodo, {})
+            .get(nodo, 0.5)
+        )
 
     # ==============================
-    # Colores de nodos
+    # Colores por fase
     # ==============================
     colores_nodos = []
 
     for nodo in nodos:
-        if "EP" in nodo:
-            colores_nodos.append("#1565C0")  # Azul
-
-        elif "ON" in nodo:
-            colores_nodos.append("#F39C12")  # Naranja
-
-        elif "CL" in nodo:
-            colores_nodos.append("#2E7D32")  # Verde
-
-        elif "MT" in nodo:
-            colores_nodos.append("#C62828")  # Rojo
-
+        if nodo.startswith("F1"):
+            colores_nodos.append("#1565C0")  # Azul F1
+        elif nodo.startswith("F2"):
+            colores_nodos.append("#F39C12")  # Naranja F2
+        elif nodo.startswith("F3"):
+            colores_nodos.append("#2E7D32")  # Verde F3
         else:
-            colores_nodos.append("#8E44AD")  # Morado
+            colores_nodos.append("#8E44AD")
 
     colores_enlaces = [
-        "rgba(180,180,180,0.25)"
+        "rgba(180,180,180,0.28)"
         for _ in source
     ]
 
     # ==============================
-    # Etiquetas para anotaciones
+    # Etiquetas cortas
     # ==============================
     etiquetas_cortas = []
 
     for nodo in nodos:
         if " | " in nodo:
             fase, texto = nodo.split(" | ", 1)
-            etiqueta = f"{fase} | {acortar_texto(texto, 34)}"
+            etiqueta = f"{fase} | {acortar_texto(texto, 38)}"
         else:
-            etiqueta = acortar_texto(nodo, 34)
+            etiqueta = acortar_texto(nodo, 38)
 
         etiquetas_cortas.append(etiqueta)
 
     # ==============================
     # Crear figura Sankey
-    # Se ocultan las etiquetas nativas de Plotly
-    # para evitar texto con sombra/relleno.
+    # Etiquetas nativas ocultas para evitar sombra
     # ==============================
     fig = go.Figure(
         go.Sankey(
@@ -380,7 +360,7 @@ def crear_sankey(df):
     )
 
     # ==============================
-    # Agregar etiquetas como anotaciones limpias
+    # Agregar etiquetas limpias
     # ==============================
     anotaciones = []
 
@@ -424,6 +404,29 @@ def crear_sankey(df):
         )
 
     # ==============================
+    # Encabezados de fase
+    # ==============================
+    for fase in fases:
+        anotaciones.append(
+            dict(
+                x=fase_x.get(fase, 0.5),
+                y=1.04,
+                xref="paper",
+                yref="paper",
+                text=f"<b>{fase}</b>",
+                showarrow=False,
+                xanchor="center",
+                yanchor="bottom",
+
+                font=dict(
+                    family="Arial",
+                    size=18,
+                    color="#111111"
+                )
+            )
+        )
+
+    # ==============================
     # Layout
     # ==============================
     fig.update_layout(
@@ -451,7 +454,7 @@ def crear_sankey(df):
         margin=dict(
             l=40,
             r=40,
-            t=90,
+            t=120,
             b=40
         ),
 
