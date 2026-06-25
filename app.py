@@ -557,7 +557,7 @@ fig_sankey = crear_sankey(df)
     #use_container_width=True
 #)
 st.plotly_chart(
-    fig,
+    fig_sankey,
     use_container_width=False,
     config={
         "displaylogo": False,
