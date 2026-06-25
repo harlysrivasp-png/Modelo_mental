@@ -174,11 +174,10 @@ def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
             thickness=25,
 
             line=dict(
-                color="rgba(0,0,0,0.35)",
-                width=0.3
+                color="rgba(0,0,0,0.25)",
+                width=0.25
             ),
 
-            # Se mantiene la etiqueta nativa para no cambiar la estructura
             label=nodos,
 
             color=colores
@@ -192,9 +191,8 @@ def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
 
             value=value,
 
-            # Enlaces más claros para que no ensucien visualmente la letra
             color=[
-                "rgba(185,185,185,0.20)"
+                "rgba(210,210,210,0.18)"
                 for _ in source
             ]
         )
@@ -320,7 +318,7 @@ def crear_sankey(df):
         font=dict(
             family="Arial",
             size=10,
-            color="#222222"
+            color="rgba(40,40,40,0.82)"
         ),
 
         updatemenus=[
