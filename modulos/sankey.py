@@ -38,15 +38,6 @@ def ordenar_fases(fases):
     )
 
 
-def acortar_texto(texto, max_len=42):
-    texto = str(texto).strip()
-
-    if len(texto) <= max_len:
-        return texto
-
-    return texto[:max_len - 3] + "..."
-
-
 def construir_datos_sankey(df):
     # ==============================
     # Limpiar datos
@@ -169,88 +160,6 @@ def construir_datos_sankey(df):
     return nodos, source, target, value, colores
 
 
-def posiciones_anotaciones(nodos):
-    """
-    Genera posiciones aproximadas para etiquetas limpias.
-    Mantiene la estructura visual:
-    Categoria -> Subcategoria -> Codigo.
-    """
-    anotaciones = []
-
-    # Dividir por tipo usando la secuencia original:
-    # cada fila aporta categoria, subcategoria y codigo.
-    categorias = []
-    subcategorias = []
-    codigos = []
-
-    for nodo in nodos:
-        texto = nodo.split(" | ", 1)[1] if " | " in nodo else nodo
-
-        # Heurística suave: las categorías suelen ser nodos de primer nivel
-        # por colores/abreviaturas principales. Si no, usamos posición por índice.
-        idx = nodos.index(nodo)
-
-        if idx % 3 == 0:
-            categorias.append(nodo)
-        elif idx % 3 == 1:
-            subcategorias.append(nodo)
-        else:
-            codigos.append(nodo)
-
-    def y_positions(lista):
-        if len(lista) == 0:
-            return {}
-
-        if len(lista) == 1:
-            return {lista[0]: 0.5}
-
-        return {
-            nodo: 0.96 - i * (0.92 / (len(lista) - 1))
-            for i, nodo in enumerate(lista)
-        }
-
-    y_cat = y_positions(categorias)
-    y_sub = y_positions(subcategorias)
-    y_cod = y_positions(codigos)
-
-    for nodo in nodos:
-        if nodo in y_cat:
-            x = 0.07
-            y = y_cat[nodo]
-        elif nodo in y_sub:
-            x = 0.40
-            y = y_sub[nodo]
-        else:
-            x = 0.73
-            y = y_cod.get(nodo, 0.5)
-
-        etiqueta = acortar_texto(nodo, 42)
-
-        anotaciones.append(
-            dict(
-                x=x,
-                y=y,
-                xref="paper",
-                yref="paper",
-                text=etiqueta,
-                showarrow=False,
-                xanchor="left",
-                yanchor="middle",
-                font=dict(
-                    family="Arial",
-                    size=11,
-                    color="#111111"
-                ),
-                bgcolor="rgba(255,255,255,0.82)",
-                bordercolor="rgba(255,255,255,0)",
-                borderwidth=0,
-                borderpad=1
-            )
-        )
-
-    return anotaciones
-
-
 def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
     return go.Sankey(
 
@@ -265,24 +174,13 @@ def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
             thickness=25,
 
             line=dict(
-                color="rgba(0,0,0,0.30)",
-                width=0.3
+                color="rgba(0,0,0,0.25)",
+                width=0.25
             ),
 
-            # Oculta etiquetas nativas de Plotly para quitar el efecto relleno
-            label=[
-                ""
-                for _ in nodos
-            ],
+            label=nodos,
 
-            color=colores,
-
-            customdata=nodos,
-
-            hovertemplate=(
-                "<b>%{customdata}</b>"
-                "<extra></extra>"
-            )
+            color=colores
         ),
 
         link=dict(
@@ -294,7 +192,7 @@ def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
             value=value,
 
             color=[
-                "rgba(190,190,190,0.20)"
+                "rgba(210,210,210,0.18)"
                 for _ in source
             ]
         )
@@ -316,7 +214,6 @@ def crear_sankey(df):
 
     traces = []
     nombres_botones = []
-    anotaciones_por_vista = []
 
     # ==============================
     # Vista general
@@ -334,9 +231,6 @@ def crear_sankey(df):
 
     traces.append(trace_general)
     nombres_botones.append("Todas")
-    anotaciones_por_vista.append(
-        posiciones_anotaciones(nodos)
-    )
 
     fig.add_trace(trace_general)
 
@@ -362,9 +256,6 @@ def crear_sankey(df):
 
         traces.append(trace_fase)
         nombres_botones.append(fase)
-        anotaciones_por_vista.append(
-            posiciones_anotaciones(nodos_fase)
-        )
 
         fig.add_trace(trace_fase)
 
@@ -399,8 +290,7 @@ def crear_sankey(df):
                         "title": {
                             "text": titulo,
                             "x": 0.5
-                        },
-                        "annotations": anotaciones_por_vista[i]
+                        }
                     }
                 ]
             )
@@ -427,11 +317,9 @@ def crear_sankey(df):
 
         font=dict(
             family="Arial",
-            size=11,
-            color="#111111"
+            size=10,
+            color="rgba(40,40,40,0.82)"
         ),
-
-        annotations=anotaciones_por_vista[0],
 
         updatemenus=[
             dict(
