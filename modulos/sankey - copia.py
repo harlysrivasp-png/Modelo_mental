@@ -1,193 +1,343 @@
 import pandas as pd
 import plotly.graph_objects as go
-from collections import defaultdict
 
 
-def acortar_texto(texto, max_len=22):
-    texto = str(texto).strip()
-    if len(texto) <= max_len:
-        return texto
-    return texto[:max_len - 3] + "..."
+def ordenar_fases(fases):
+    """
+    Ordena las fases de forma natural: F1, F2, F3.
+    """
+    orden = {
+        "F1": 1,
+        "FASE 1": 1,
+        "FASE1": 1,
+        "Fase 1": 1,
+        "Fase1": 1,
+        "fase 1": 1,
+        "fase1": 1,
+
+        "F2": 2,
+        "FASE 2": 2,
+        "FASE2": 2,
+        "Fase 2": 2,
+        "Fase2": 2,
+        "fase 2": 2,
+        "fase2": 2,
+
+        "F3": 3,
+        "FASE 3": 3,
+        "FASE3": 3,
+        "Fase 3": 3,
+        "Fase3": 3,
+        "fase 3": 3,
+        "fase3": 3,
+    }
+
+    return sorted(
+        fases,
+        key=lambda x: orden.get(str(x).strip(), 999)
+    )
 
 
-def crear_sankey(df):
+def construir_datos_sankey(df):
     # ==============================
     # Limpiar datos
     # ==============================
     df = df.copy()
 
-    columnas_requeridas = ["Fase", "Categoría", "Subcategoría", "Código"]
-    for col in columnas_requeridas:
-        if col not in df.columns:
-            raise ValueError(f"Falta la columna requerida: {col}")
-
-    for col in columnas_requeridas:
-        df[col] = df[col].astype(str).str.strip()
-
-    df = df[
-        (df["Fase"] != "") &
-        (df["Categoría"] != "") &
-        (df["Subcategoría"] != "") &
-        (df["Código"] != "")
-    ].copy()
-
-    fases = sorted(df["Fase"].unique())
+    df["Fase"] = df["Fase"].astype(str).str.strip()
+    df["Categoría"] = df["Categoría"].astype(str).str.strip()
+    df["Subcategoría"] = df["Subcategoría"].astype(str).str.strip()
+    df["Código"] = df["Código"].astype(str).str.strip()
 
     # ==============================
-    # Crear nodos y enlaces
+    # Crear nodos
     # ==============================
     nodos = []
     enlaces = []
 
+    fases = ordenar_fases(df["Fase"].unique())
+
     for fase in fases:
+
         df_fase = df[df["Fase"] == fase]
 
         for _, row in df_fase.iterrows():
+
             categoria = f"{fase} | {row['Categoría']}"
             subcategoria = f"{fase} | {row['Subcategoría']}"
             codigo = f"{fase} | {row['Código']}"
 
-            nodos.extend([categoria, subcategoria, codigo])
+            nodos.extend([
+                categoria,
+                subcategoria,
+                codigo
+            ])
 
-            enlaces.append((categoria, subcategoria, 1))
-            enlaces.append((subcategoria, codigo, 1))
+            enlaces.append(
+                (categoria, subcategoria, 1)
+            )
+
+            enlaces.append(
+                (subcategoria, codigo, 1)
+            )
 
     # ==============================
     # Evolución entre fases
     # ==============================
     for i in range(len(fases) - 1):
+
         fase_actual = fases[i]
         fase_siguiente = fases[i + 1]
 
         df_actual = df[df["Fase"] == fase_actual]
         df_sig = df[df["Fase"] == fase_siguiente]
 
-        comunes = set(df_actual["Código"]).intersection(set(df_sig["Código"]))
+        comunes = set(
+            df_actual["Código"]
+        ).intersection(
+            set(df_sig["Código"])
+        )
 
         for codigo in comunes:
+
             origen = f"{fase_actual} | {codigo}"
             destino = f"{fase_siguiente} | {codigo}"
-            enlaces.append((origen, destino, 1))
+
+            enlaces.append(
+                (origen, destino, 1)
+            )
 
     # ==============================
-    # Nodos únicos
+    # Diccionario de nodos
     # ==============================
     nodos = list(dict.fromkeys(nodos))
-    mapa_nodos = {nodo: i for i, nodo in enumerate(nodos)}
 
-    # ==============================
-    # Agrupar enlaces repetidos
-    # ==============================
-    enlaces_agrupados = defaultdict(int)
-    for s, t, v in enlaces:
-        if s in mapa_nodos and t in mapa_nodos:
-            enlaces_agrupados[(s, t)] += v
+    mapa_nodos = {
+        nodo: i
+        for i, nodo in enumerate(nodos)
+    }
 
     source = []
     target = []
     value = []
 
-    for (s, t), v in enlaces_agrupados.items():
-        source.append(mapa_nodos[s])
-        target.append(mapa_nodos[t])
-        value.append(v)
+    for s, t, v in enlaces:
+
+        if s in mapa_nodos and t in mapa_nodos:
+
+            source.append(
+                mapa_nodos[s]
+            )
+
+            target.append(
+                mapa_nodos[t]
+            )
+
+            value.append(v)
 
     # ==============================
-    # Etiquetas cortas + hover completo
+    # Colores
     # ==============================
-    etiquetas_cortas = []
-    etiquetas_completas = []
+    colores = []
 
     for nodo in nodos:
-        etiquetas_completas.append(nodo)
 
-        if " | " in nodo:
-            fase, texto = nodo.split(" | ", 1)
-            etiquetas_cortas.append(f"{fase} | {acortar_texto(texto, 20)}")
-        else:
-            etiquetas_cortas.append(acortar_texto(nodo, 22))
-
-    # ==============================
-    # Colores nodos
-    # ==============================
-    colores_nodos = []
-    for nodo in nodos:
         if "EP" in nodo:
-            colores_nodos.append("#1565C0")
+            colores.append("#0066CC")
+
         elif "ON" in nodo:
-            colores_nodos.append("#F39C12")
+            colores.append("#F39C12")
+
         elif "CL" in nodo:
-            colores_nodos.append("#2E7D32")
+            colores.append("#2CA02C")
+
         elif "MT" in nodo:
-            colores_nodos.append("#C62828")
+            colores.append("#D62728")
+
         else:
-            colores_nodos.append("#8E44AD")
+            colores.append("#8E44AD")
 
-    # enlaces más suaves pero visibles
-    colores_enlaces = ["rgba(140,140,140,0.40)" for _ in source]
+    return nodos, source, target, value, colores
 
-    # ==============================
-    # Figura Sankey
-    # ==============================
-    fig = go.Figure(
-        go.Sankey(
-            arrangement="snap",
-            valueformat=".0f",
 
-            node=dict(
-                pad=35,
-                thickness=18,
-                line=dict(
-                    color="rgba(70,70,70,0.55)",
-                    width=0.5
-                ),
-                label=etiquetas_cortas,
-                color=colores_nodos,
-                customdata=etiquetas_completas,
-                hovertemplate="<b>%{customdata}</b><extra></extra>",
+def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
+    return go.Sankey(
+
+        arrangement="snap",
+
+        visible=visible,
+
+        node=dict(
+
+            pad=20,
+
+            thickness=25,
+
+            line=dict(
+                color="rgba(0,0,0,0.35)",
+                width=0.3
             ),
 
-            link=dict(
-                source=source,
-                target=target,
-                value=value,
-                color=colores_enlaces,
-                hovertemplate=(
-                    "Origen: %{source.label}<br>"
-                    "Destino: %{target.label}<br>"
-                    "Valor: %{value}<extra></extra>"
-                )
-            )
+            label=nodos,
+
+            color=colores
+        ),
+
+        link=dict(
+
+            source=source,
+
+            target=target,
+
+            value=value,
+
+            color=[
+                "rgba(180,180,180,0.22)"
+                for _ in source
+            ]
         )
     )
+
+
+def crear_sankey(df):
+
+    df = df.copy()
+
+    df["Fase"] = df["Fase"].astype(str).str.strip()
+
+    fases = ordenar_fases(df["Fase"].unique())
+
+    # ==============================
+    # Figura
+    # ==============================
+    fig = go.Figure()
+
+    traces = []
+    nombres_botones = []
+
+    # ==============================
+    # Vista general
+    # ==============================
+    nodos, source, target, value, colores = construir_datos_sankey(df)
+
+    trace_general = crear_trace_sankey(
+        nodos,
+        source,
+        target,
+        value,
+        colores,
+        visible=True
+    )
+
+    traces.append(trace_general)
+    nombres_botones.append("Todas")
+
+    fig.add_trace(trace_general)
+
+    # ==============================
+    # Vistas por fase
+    # ==============================
+    for fase in fases:
+
+        df_fase = df[df["Fase"] == fase]
+
+        nodos_fase, source_fase, target_fase, value_fase, colores_fase = construir_datos_sankey(
+            df_fase
+        )
+
+        trace_fase = crear_trace_sankey(
+            nodos_fase,
+            source_fase,
+            target_fase,
+            value_fase,
+            colores_fase,
+            visible=False
+        )
+
+        traces.append(trace_fase)
+        nombres_botones.append(fase)
+
+        fig.add_trace(trace_fase)
+
+    # ==============================
+    # Botones dinámicos
+    # ==============================
+    botones = []
+
+    for i, nombre in enumerate(nombres_botones):
+
+        visible = [
+            False
+            for _ in traces
+        ]
+
+        visible[i] = True
+
+        if nombre == "Todas":
+            titulo = "Evolución del Modelo Mental de Conciencia Ambiental"
+        else:
+            titulo = f"Evolución del Modelo Mental de Conciencia Ambiental - {nombre}"
+
+        botones.append(
+            dict(
+                label=nombre,
+                method="update",
+                args=[
+                    {
+                        "visible": visible
+                    },
+                    {
+                        "title": {
+                            "text": titulo,
+                            "x": 0.5,
+                            "y": 0.94,
+                            "xanchor": "center",
+                            "yanchor": "top"
+                        }
+                    }
+                ]
+            )
+        )
 
     # ==============================
     # Layout
     # ==============================
     fig.update_layout(
+
         title=dict(
             text="Evolución del Modelo Mental de Conciencia Ambiental",
             x=0.5,
+            y=0.94,
             xanchor="center",
-            font=dict(
-                family="Arial, sans-serif",
-                size=24,
-                color="#222222"
-            )
+            yanchor="top"
         ),
 
-        width=2200,
-        height=1400,
+        height=1000,
+
+        margin=dict(
+            l=40,
+            r=40,
+            t=130,
+            b=40
+        ),
 
         font=dict(
-            family="Arial, sans-serif",
-            size=12,
+            family="Arial",
+            size=11,
             color="#222222"
         ),
 
-        margin=dict(l=40, r=40, t=90, b=40),
-        paper_bgcolor="white",
-        plot_bgcolor="white"
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0.5,
+                y=1.15,
+                xanchor="center",
+                yanchor="top",
+                buttons=botones
+            )
+        ]
     )
 
     return fig
