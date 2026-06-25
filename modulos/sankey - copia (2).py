@@ -38,15 +38,6 @@ def ordenar_fases(fases):
     )
 
 
-def acortar_texto(texto, max_len=34):
-    texto = str(texto).strip()
-
-    if len(texto) <= max_len:
-        return texto
-
-    return texto[:max_len - 3] + "..."
-
-
 def construir_datos_sankey(df):
     # ==============================
     # Limpiar datos
@@ -187,20 +178,9 @@ def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
                 width=0.5
             ),
 
-            # Ocultamos las etiquetas nativas para evitar letras rellenas
-            label=[
-                ""
-                for _ in nodos
-            ],
+            label=nodos,
 
-            color=colores,
-
-            customdata=nodos,
-
-            hovertemplate=(
-                "<b>%{customdata}</b>"
-                "<extra></extra>"
-            )
+            color=colores
         ),
 
         link=dict(
@@ -209,75 +189,9 @@ def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
 
             target=target,
 
-            value=value,
-
-            color=[
-                "rgba(180,180,180,0.25)"
-                for _ in source
-            ]
+            value=value
         )
     )
-
-
-def crear_anotaciones(nodos):
-    """
-    Crea etiquetas limpias y delgadas como anotaciones.
-    Se ubican en tres columnas aproximadas:
-    categorias, subcategorias y codigos.
-    """
-
-    anotaciones = []
-
-    # Separar nodos por posición aproximada según orden
-    n = len(nodos)
-
-    if n == 0:
-        return anotaciones
-
-    # Distribución vertical
-    for i, nodo in enumerate(nodos):
-
-        if " | " in nodo:
-            fase, texto = nodo.split(" | ", 1)
-            etiqueta = f"{fase} | {acortar_texto(texto, 34)}"
-        else:
-            etiqueta = acortar_texto(nodo, 34)
-
-        # Posiciones aproximadas por tipo de nodo
-        posicion = i % 3
-
-        if posicion == 0:
-            x = 0.03
-        elif posicion == 1:
-            x = 0.38
-        else:
-            x = 0.73
-
-        y = 0.98 - (i / max(n - 1, 1)) * 0.92
-
-        anotaciones.append(
-            dict(
-                x=x,
-                y=y,
-                xref="paper",
-                yref="paper",
-                text=etiqueta,
-                showarrow=False,
-                xanchor="left",
-                yanchor="middle",
-                font=dict(
-                    family="Arial",
-                    size=11,
-                    color="#111111"
-                ),
-                bgcolor="rgba(255,255,255,0.80)",
-                bordercolor="rgba(255,255,255,0)",
-                borderwidth=0,
-                borderpad=1
-            )
-        )
-
-    return anotaciones
 
 
 def crear_sankey(df):
@@ -295,7 +209,6 @@ def crear_sankey(df):
 
     traces = []
     nombres_botones = []
-    anotaciones_vistas = []
 
     # ==============================
     # Vista general
@@ -313,7 +226,6 @@ def crear_sankey(df):
 
     traces.append(trace_general)
     nombres_botones.append("Todas")
-    anotaciones_vistas.append(crear_anotaciones(nodos))
 
     fig.add_trace(trace_general)
 
@@ -339,7 +251,6 @@ def crear_sankey(df):
 
         traces.append(trace_fase)
         nombres_botones.append(fase)
-        anotaciones_vistas.append(crear_anotaciones(nodos_fase))
 
         fig.add_trace(trace_fase)
 
@@ -374,8 +285,7 @@ def crear_sankey(df):
                         "title": {
                             "text": titulo,
                             "x": 0.5
-                        },
-                        "annotations": anotaciones_vistas[i]
+                        }
                     }
                 ]
             )
@@ -395,25 +305,16 @@ def crear_sankey(df):
 
         font=dict(
             family="Arial",
-            size=11,
-            color="#111111"
+            size=12,
+            color="black"
         ),
-
-        margin=dict(
-            l=40,
-            r=40,
-            t=130,
-            b=40
-        ),
-
-        annotations=anotaciones_vistas[0],
 
         updatemenus=[
             dict(
                 type="buttons",
                 direction="right",
                 x=0.5,
-                y=1.10,
+                y=1.08,
                 xanchor="center",
                 yanchor="top",
                 buttons=botones
