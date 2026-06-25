@@ -552,10 +552,23 @@ st.subheader(
 
 fig_sankey = crear_sankey(df)
 
+#st.plotly_chart(
+    #fig_sankey,
+    #use_container_width=True
+#)
 st.plotly_chart(
-    fig_sankey,
-    use_container_width=True
+    fig,
+    use_container_width=False,
+    config={
+        "displaylogo": False,
+        "toImageButtonOptions": {
+            "format": "png",
+            "scale": 3
+        }
+    }
 )
+
+
 # ==========================================
 # RADAR
 # ==========================================
