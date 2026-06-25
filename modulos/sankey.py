@@ -316,7 +316,7 @@ def crear_sankey(df):
         ),
 
         font=dict(
-            family="Courier New",
+            family="Verdana",
             size=10,
             color="#222222"
         ),
