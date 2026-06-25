@@ -2,8 +2,43 @@ import pandas as pd
 import plotly.graph_objects as go
 
 
-def crear_sankey(df):
- 
+def ordenar_fases(fases):
+    """
+    Ordena las fases de forma natural: F1, F2, F3.
+    """
+    orden = {
+        "F1": 1,
+        "FASE 1": 1,
+        "FASE1": 1,
+        "Fase 1": 1,
+        "Fase1": 1,
+        "fase 1": 1,
+        "fase1": 1,
+
+        "F2": 2,
+        "FASE 2": 2,
+        "FASE2": 2,
+        "Fase 2": 2,
+        "Fase2": 2,
+        "fase 2": 2,
+        "fase2": 2,
+
+        "F3": 3,
+        "FASE 3": 3,
+        "FASE3": 3,
+        "Fase 3": 3,
+        "Fase3": 3,
+        "fase 3": 3,
+        "fase3": 3,
+    }
+
+    return sorted(
+        fases,
+        key=lambda x: orden.get(str(x).strip(), 999)
+    )
+
+
+def construir_datos_sankey(df):
     # ==============================
     # Limpiar datos
     # ==============================
@@ -20,7 +55,7 @@ def crear_sankey(df):
     nodos = []
     enlaces = []
 
-    fases = sorted(df["Fase"].unique())
+    fases = ordenar_fases(df["Fase"].unique())
 
     for fase in fases:
 
@@ -49,10 +84,10 @@ def crear_sankey(df):
     # ==============================
     # Evolución entre fases
     # ==============================
-    for i in range(len(fases)-1):
+    for i in range(len(fases) - 1):
 
         fase_actual = fases[i]
-        fase_siguiente = fases[i+1]
+        fase_siguiente = fases[i + 1]
 
         df_actual = df[df["Fase"] == fase_actual]
         df_sig = df[df["Fase"] == fase_siguiente]
@@ -122,42 +157,143 @@ def crear_sankey(df):
         else:
             colores.append("#8E44AD")
 
-    # ==============================
-    # Crear figura
-    # ==============================
-    fig = go.Figure(
+    return nodos, source, target, value, colores
 
-        go.Sankey(
 
-            arrangement="snap",
+def crear_trace_sankey(nodos, source, target, value, colores, visible=True):
+    return go.Sankey(
 
-            node=dict(
+        arrangement="snap",
 
-                pad=20,
+        visible=visible,
 
-                thickness=25,
+        node=dict(
 
-                line=dict(
-                    color="black",
-                    width=0.5
-                ),
+            pad=20,
 
-                label=nodos,
+            thickness=25,
 
-                color=colores
+            line=dict(
+                color="black",
+                width=0.5
             ),
 
-            link=dict(
+            label=nodos,
 
-                source=source,
+            color=colores
+        ),
 
-                target=target,
+        link=dict(
 
-                value=value
-            )
+            source=source,
+
+            target=target,
+
+            value=value
         )
     )
 
+
+def crear_sankey(df):
+
+    df = df.copy()
+
+    df["Fase"] = df["Fase"].astype(str).str.strip()
+
+    fases = ordenar_fases(df["Fase"].unique())
+
+    # ==============================
+    # Figura
+    # ==============================
+    fig = go.Figure()
+
+    traces = []
+    nombres_botones = []
+
+    # ==============================
+    # Vista general
+    # ==============================
+    nodos, source, target, value, colores = construir_datos_sankey(df)
+
+    trace_general = crear_trace_sankey(
+        nodos,
+        source,
+        target,
+        value,
+        colores,
+        visible=True
+    )
+
+    traces.append(trace_general)
+    nombres_botones.append("Todas")
+
+    fig.add_trace(trace_general)
+
+    # ==============================
+    # Vistas por fase
+    # ==============================
+    for fase in fases:
+
+        df_fase = df[df["Fase"] == fase]
+
+        nodos_fase, source_fase, target_fase, value_fase, colores_fase = construir_datos_sankey(
+            df_fase
+        )
+
+        trace_fase = crear_trace_sankey(
+            nodos_fase,
+            source_fase,
+            target_fase,
+            value_fase,
+            colores_fase,
+            visible=False
+        )
+
+        traces.append(trace_fase)
+        nombres_botones.append(fase)
+
+        fig.add_trace(trace_fase)
+
+    # ==============================
+    # Botones dinámicos
+    # ==============================
+    botones = []
+
+    for i, nombre in enumerate(nombres_botones):
+
+        visible = [
+            False
+            for _ in traces
+        ]
+
+        visible[i] = True
+
+        if nombre == "Todas":
+            titulo = "Evolución del Modelo Mental de Conciencia Ambiental"
+        else:
+            titulo = f"Evolución del Modelo Mental de Conciencia Ambiental - {nombre}"
+
+        botones.append(
+            dict(
+                label=nombre,
+                method="update",
+                args=[
+                    {
+                        "visible": visible
+                    },
+                    {
+                        "title": {
+                            "text": titulo,
+                            "x": 0.5
+                        }
+                    }
+                ]
+            )
+        )
+
+    # ==============================
+    # Layout
+    # ==============================
     fig.update_layout(
 
         title=dict(
@@ -168,8 +304,22 @@ def crear_sankey(df):
         height=1000,
 
         font=dict(
-            size=12
-        )
+            family="Arial",
+            size=12,
+            color="black"
+        ),
+
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0.5,
+                y=1.08,
+                xanchor="center",
+                yanchor="top",
+                buttons=botones
+            )
+        ]
     )
 
     return fig
