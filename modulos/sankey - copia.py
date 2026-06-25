@@ -289,8 +289,8 @@ def crear_sankey(df):
                     {
                         "title": {
                             "text": titulo,
-                            "x": 0.3,
-                            "y": 0.8,
+                            "x": 0.5,
+                            "y": 0.88,
                             "xanchor": "center",
                             "yanchor": "top"
                         }
@@ -307,7 +307,7 @@ def crear_sankey(df):
         title=dict(
             text="Evolución del Modelo Mental de Conciencia Ambiental",
             x=0.5,
-            y=0.94,
+            y=0.88,
             xanchor="center",
             yanchor="top"
         ),
@@ -317,7 +317,7 @@ def crear_sankey(df):
         margin=dict(
             l=40,
             r=40,
-            t=130,
+            t=180,
             b=40
         ),
 
@@ -332,7 +332,7 @@ def crear_sankey(df):
                 type="buttons",
                 direction="right",
                 x=0.5,
-                y=1.15,
+                y=1.22,
                 xanchor="center",
                 yanchor="top",
                 buttons=botones
